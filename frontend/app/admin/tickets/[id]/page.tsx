@@ -148,7 +148,7 @@ export default function AdminTicketDetailPage() {
               <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
                 <div className="flex items-center gap-2">
                   <Bot className="h-5 w-5 text-violet-700" />
-                  <h2 className="text-lg font-semibold text-ink">AI 分类结果</h2>
+                  <h2 className="text-lg font-semibold text-ink">AI 分析结果</h2>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-md bg-cyan-50 p-3">

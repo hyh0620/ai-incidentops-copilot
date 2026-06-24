@@ -23,7 +23,7 @@ export default async function RequesterDashboardPage() {
   return (
     <AppShell mode="requester" title="用户报障端" subtitle="提交问题、查看 AI 建议和工单处理时间线">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="我的工单总数" value={tickets.length} icon={LifeBuoy} hint="按当前演示身份隔离" />
+        <StatCard label="我的工单总数" value={tickets.length} icon={LifeBuoy} hint="按当前演示身份统计" />
         <StatCard label="处理中工单数" value={inProgress} icon={Clock3} hint="已分诊和处理中" />
         <StatCard label="已解决工单数" value={resolved} icon={CheckCircle2} hint="已解决或已关闭" />
         <StatCard label="等待反馈工单数" value={waiting} icon={FilePlus2} hint="等待服务台分诊" />

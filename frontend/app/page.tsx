@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 const features = [
   { title: "问题提交与附件解析", text: "用户描述、运行日志和截图统一进入分析记录。", icon: FileText },
   { title: "混合检索（RAG）", text: "向量检索、BM25 关键词检索、RRF 融合和启发式排序查询知识库。", icon: Boxes },
-  { title: "证据驱动智能分析", text: "分类结果和处理建议均附上对应文本、日志、OCR 或知识库证据。", icon: BrainCircuit },
-  { title: "工单闭环与复核", text: "工单流转、处理任务、人工复核、历史结果对比和数据看板。", icon: ShieldCheck }
+  { title: "证据驱动智能分析", text: "分析结论和处理建议均附上对应文本、日志、OCR 或知识库证据。", icon: BrainCircuit },
+  { title: "工单闭环与复核", text: "工单流转、处理任务、人工复核、分析记录和数据看板。", icon: ShieldCheck }
 ];
 
 async function safeLoad() {
