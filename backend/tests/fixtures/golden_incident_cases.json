@@ -1,0 +1,496 @@
+[
+  {
+    "id": "vpn_home_network",
+    "title": "VPN cannot connect from home network",
+    "description": "员工在家办公时 VPN cannot connect，切换 wifi 后仍然 network timeout。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "网络连接",
+    "expected_severity": "medium",
+    "expected_source_titles": [
+      "VPN 无法连接"
+    ],
+    "requires_human_review": false,
+    "expected_evidence_terms": [
+      "vpn",
+      "cannot connect",
+      "timeout"
+    ]
+  },
+  {
+    "id": "database_timeout",
+    "title": "Database connection timeout",
+    "description": "订单服务访问 database connection timeout，连接池耗尽。",
+    "log_text": "ERROR DatabaseTimeoutException database connection timeout HTTP 500",
+    "ocr_text": "",
+    "expected_category": "软件系统",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "数据库连接超时"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "DatabaseTimeoutException",
+      "database",
+      "timeout"
+    ]
+  },
+  {
+    "id": "api_500",
+    "title": "Production API returns 500 error",
+    "description": "生产 API returns 500 error after deployment.",
+    "log_text": "ERROR NullPointerException HTTP 500 /api/orders",
+    "ocr_text": "",
+    "expected_category": "软件系统",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "生产 API 返回 500 错误"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "500",
+      "exception",
+      "api"
+    ]
+  },
+  {
+    "id": "mfa_missing",
+    "title": "MFA code not received",
+    "description": "用户 login 时 MFA code not received，无法完成认证。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "账号权限",
+    "expected_severity": "medium",
+    "expected_source_titles": [
+      "MFA 验证码无法接收"
+    ],
+    "requires_human_review": false,
+    "expected_evidence_terms": [
+      "mfa",
+      "login"
+    ]
+  },
+  {
+    "id": "phishing_email",
+    "title": "Email looks like phishing attempt",
+    "description": "收到疑似 phishing 邮件，包含外部链接和异常附件。",
+    "log_text": "",
+    "ocr_text": "Warning: suspicious phishing link detected",
+    "expected_category": "安全风险",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "钓鱼邮件上报流程"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "phishing",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "suspicious_login",
+    "title": "Suspicious login alert from unknown location",
+    "description": "账号收到 unknown login alert，登录地点显示海外 IP。",
+    "log_text": "WARN suspicious unknown login unauthorized session",
+    "ocr_text": "",
+    "expected_category": "安全风险",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "可疑登录告警处理"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "unknown login",
+      "unauthorized"
+    ]
+  },
+  {
+    "id": "malware_alert",
+    "title": "Endpoint malware alert",
+    "description": "终端安全客户端提示 malware alert，文件来自外部压缩包。",
+    "log_text": "WARN malware quarantine event",
+    "ocr_text": "",
+    "expected_category": "安全风险",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "钓鱼邮件上报流程"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "malware"
+    ]
+  },
+  {
+    "id": "disk_usage",
+    "title": "Server disk usage reached 95%",
+    "description": "服务器 disk usage reached 95%，日志目录增长过快。",
+    "log_text": "WARN /var/log disk usage 95%",
+    "ocr_text": "",
+    "expected_category": "系统资源",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "服务器磁盘空间不足"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "disk",
+      "server"
+    ]
+  },
+  {
+    "id": "access_denied",
+    "title": "Shared drive access denied",
+    "description": "访问共享盘提示 access denied，影响部门资料查看。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "账号权限",
+    "expected_severity": "medium",
+    "expected_source_titles": [
+      "内网系统访问被拒绝"
+    ],
+    "requires_human_review": false,
+    "expected_evidence_terms": [
+      "access denied"
+    ]
+  },
+  {
+    "id": "password_reset",
+    "title": "Password reset link expired",
+    "description": "password reset link expired，多次重发后仍然 failed。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "账号权限",
+    "expected_severity": "medium",
+    "expected_source_titles": [
+      "密码重置失败"
+    ],
+    "requires_human_review": false,
+    "expected_evidence_terms": [
+      "password",
+      "failed"
+    ]
+  },
+  {
+    "id": "gitlab_ci",
+    "title": "GitLab CI pipeline failed",
+    "description": "GitLab CI pipeline failed，runner 日志显示 dependency failed。",
+    "log_text": "ERROR job failed dependency install error",
+    "ocr_text": "",
+    "expected_category": "其他",
+    "expected_severity": "low",
+    "expected_source_titles": [
+      "GitLab CI 构建失败"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "gitlab",
+      "failed"
+    ]
+  },
+  {
+    "id": "software_policy",
+    "title": "Software installation blocked by policy",
+    "description": "安装设计软件时被 endpoint policy blocked。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "其他",
+    "expected_severity": "low",
+    "expected_source_titles": [
+      "软件安装被策略阻止"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "policy",
+      "blocked"
+    ]
+  },
+  {
+    "id": "wifi_disconnect",
+    "title": "WiFi frequently disconnects",
+    "description": "会议室 wifi frequently disconnects，视频会议中断。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "网络连接",
+    "expected_severity": "medium",
+    "expected_source_titles": [
+      "VPN 无法连接"
+    ],
+    "requires_human_review": false,
+    "expected_evidence_terms": [
+      "wifi"
+    ]
+  },
+  {
+    "id": "email_gateway",
+    "title": "External email not received",
+    "description": "客户反馈 external email not received，邮箱网关无明显退信。",
+    "log_text": "WARN mail gateway delayed",
+    "ocr_text": "",
+    "expected_category": "其他",
+    "expected_severity": "low",
+    "expected_source_titles": [
+      "邮箱收不到外部邮件"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "email",
+      "gateway"
+    ]
+  },
+  {
+    "id": "blank_dashboard",
+    "title": "Internal dashboard returns blank page",
+    "description": "内部 dashboard 返回空白页，浏览器控制台出现 exception。",
+    "log_text": "ERROR TypeError exception",
+    "ocr_text": "HTTP 500 blank page",
+    "expected_category": "软件系统",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "生产 API 返回 500 错误"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "exception",
+      "500"
+    ]
+  },
+  {
+    "id": "oracle_error",
+    "title": "ORA-12170 database timeout",
+    "description": "数据库连接偶发 ORA-12170 超时。",
+    "log_text": "ERROR ORA-12170 TNS Connect timeout occurred",
+    "ocr_text": "",
+    "expected_category": "软件系统",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "数据库连接超时"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "ORA-12170",
+      "timeout"
+    ]
+  },
+  {
+    "id": "econnreset",
+    "title": "API ECONNRESET after release",
+    "description": "发布后 API request timeout。",
+    "log_text": "ERROR ECONNRESET upstream timeout HTTP 502",
+    "ocr_text": "",
+    "expected_category": "软件系统",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "生产 API 返回 500 错误"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "ECONNRESET",
+      "timeout"
+    ]
+  },
+  {
+    "id": "unknown_noise",
+    "title": "Need help with office chair",
+    "description": "员工咨询办公椅高度调节，无 IT 故障证据。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "其他",
+    "expected_severity": "low",
+    "expected_source_titles": [],
+    "requires_human_review": true,
+    "expected_evidence_terms": []
+  },
+  {
+    "id": "chinese_network",
+    "title": "无法连接公司 VPN",
+    "description": "回家后无法连接 VPN，提示网络超时。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "网络连接",
+    "expected_severity": "medium",
+    "expected_source_titles": [
+      "VPN 无法连接"
+    ],
+    "requires_human_review": false,
+    "expected_evidence_terms": [
+      "VPN",
+      "超时"
+    ]
+  },
+  {
+    "id": "chinese_security",
+    "title": "可疑登录告警",
+    "description": "检测到未知设备登录，用户确认不是本人操作。",
+    "log_text": "WARN unauthorized unknown login",
+    "ocr_text": "",
+    "expected_category": "安全风险",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "可疑登录告警处理"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "unauthorized",
+      "unknown login"
+    ]
+  },
+  {
+    "id": "cpu_memory",
+    "title": "CPU memory usage high",
+    "description": "应用服务器 CPU 和 memory 长时间 95%，服务响应慢。",
+    "log_text": "WARN CPU 95 memory 95",
+    "ocr_text": "",
+    "expected_category": "系统资源",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "服务器磁盘空间不足"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "cpu",
+      "memory"
+    ]
+  },
+  {
+    "id": "jira_access",
+    "title": "Cannot access Jira project",
+    "description": "Jira 项目提示 access denied，用户已转入新项目组。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "账号权限",
+    "expected_severity": "medium",
+    "expected_source_titles": [
+      "内网系统访问被拒绝"
+    ],
+    "requires_human_review": false,
+    "expected_evidence_terms": [
+      "access denied"
+    ]
+  },
+  {
+    "id": "crm_null_pointer",
+    "title": "CRM page returns 500",
+    "description": "CRM 页面返回 500。",
+    "log_text": "ERROR NullPointerException HTTP 500",
+    "ocr_text": "500 Internal Server Error",
+    "expected_category": "软件系统",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "生产 API 返回 500 错误"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "500",
+      "NullPointerException"
+    ]
+  },
+  {
+    "id": "shared_dashboard_denied",
+    "title": "共享 dashboard access denied",
+    "description": "新成员无法查看共享 dashboard，提示 access denied。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "账号权限",
+    "expected_severity": "medium",
+    "expected_source_titles": [
+      "内网系统访问被拒绝"
+    ],
+    "requires_human_review": false,
+    "expected_evidence_terms": [
+      "access denied"
+    ]
+  },
+  {
+    "id": "mail_phishing_mixed",
+    "title": "疑似钓鱼邮件 phishing",
+    "description": "用户上报 suspicious phishing attachment，疑似伪装成发票。",
+    "log_text": "WARN suspicious external link",
+    "ocr_text": "",
+    "expected_category": "安全风险",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "钓鱼邮件上报流程"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "phishing",
+      "suspicious"
+    ]
+  },
+  {
+    "id": "real_ocr_api_500",
+    "title": "用户上传错误截图",
+    "description": "用户只上传截图，描述中没有明确错误码。",
+    "log_text": "",
+    "ocr_text": "",
+    "screenshot_fixture": "tests/fixtures/images/ocr_http_500.png",
+    "expected_category": "软件系统",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "数据库连接超时",
+      "生产 API 返回 500 错误"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "HTTP 500",
+      "DatabaseTimeoutException",
+      "timeout"
+    ]
+  },
+  {
+    "id": "ocr_failure_missing_file",
+    "title": "截图损坏无法识别",
+    "description": "用户称系统异常，但截图文件不存在。",
+    "log_text": "",
+    "ocr_text": "",
+    "screenshot_fixture": "tests/fixtures/images/missing.png",
+    "expected_category": "其他",
+    "expected_severity": "low",
+    "expected_source_titles": [],
+    "requires_human_review": true,
+    "expected_evidence_terms": []
+  },
+  {
+    "id": "noise_keywords_no_incident",
+    "title": "培训材料包含 phishing malware timeout",
+    "description": "安全培训文档里出现 phishing malware timeout 等词，但用户没有报告实际故障。",
+    "log_text": "",
+    "ocr_text": "",
+    "expected_category": "其他",
+    "expected_severity": "low",
+    "expected_source_titles": [],
+    "requires_human_review": true,
+    "expected_evidence_terms": []
+  },
+  {
+    "id": "conflicting_network_security",
+    "title": "VPN suspicious login conflict",
+    "description": "用户 VPN cannot connect，同时日志出现 unknown login unauthorized。",
+    "log_text": "WARN unknown login unauthorized while VPN cannot connect",
+    "ocr_text": "",
+    "expected_category": "安全风险",
+    "expected_severity": "high",
+    "expected_source_titles": [
+      "可疑登录告警处理"
+    ],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "unknown login",
+      "unauthorized"
+    ]
+  },
+  {
+    "id": "unknown_error_code_no_kb",
+    "title": "Service reports ZX-9917",
+    "description": "内部服务报错 ZX-9917，没有现有知识库文章覆盖。",
+    "log_text": "ERROR ZX-9917 component failure",
+    "ocr_text": "",
+    "expected_category": "其他",
+    "expected_severity": "low",
+    "expected_source_titles": [],
+    "requires_human_review": true,
+    "expected_evidence_terms": [
+      "ZX-9917"
+    ]
+  }
+]

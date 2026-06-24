@@ -1,0 +1,52 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: incidentops-backend
+    environment:
+      DATABASE_URL: sqlite:////data/incidentops.db
+      AUTH_MODE: demo
+      ALLOW_DEV_CREATE_ALL: "false"
+      BOOTSTRAP_DEMO_DATA: "true"
+      LLM_PROVIDER: none
+      VISION_PROVIDER: none
+      TRIAGE_PROVIDER: rule_fallback
+      EMBEDDING_PROVIDER: local_hash_embedding_fallback
+      RERANKER_PROVIDER: heuristic_reranker
+      OCR_PROVIDER: pytesseract_ocr
+      OCR_REQUIRED_LANGUAGES: eng,chi_sim
+      VECTOR_INDEX_DIR: /app/app/vector_store
+      ALLOW_AUTO_REBUILD_INDEX: "false"
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
+      MAX_UPLOAD_BYTES: 10485760
+      ENABLE_PII_REDACTION: "true"
+      REDACT_INTERNAL_IPS: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      - incidentops-data:/data
+      - ./backend/app/uploads:/app/app/uploads
+      - ./backend/app/vector_store:/app/app/vector_store
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    container_name: incidentops-frontend
+    environment:
+      API_BASE_URL: http://backend:8000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  incidentops-data:
