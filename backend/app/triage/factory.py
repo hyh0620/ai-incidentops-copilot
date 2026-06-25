@@ -6,8 +6,9 @@ from app.triage.rule_provider import RuleFallbackTriageProvider
 
 def get_triage_provider() -> TriageProvider:
     settings = get_settings()
-    if settings.triage_provider == "openai_compatible":
-        if settings.llm_provider != "openai_compatible":
-            return OpenAICompatibleTriageProvider("TRIAGE_PROVIDER=openai_compatible but LLM_PROVIDER is not openai_compatible")
-        return OpenAICompatibleTriageProvider("OpenAI-compatible triage provider interface exists but HTTP implementation is not enabled in v2")
+    configured_provider = settings.analysis_provider
+    if configured_provider == "rule_fallback" and settings.triage_provider == "openai_compatible":
+        configured_provider = "openai_compatible"
+    if configured_provider == "openai_compatible":
+        return OpenAICompatibleTriageProvider()
     return RuleFallbackTriageProvider()

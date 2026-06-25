@@ -60,6 +60,11 @@ class TriageDecision(BaseModel):
     provider: str
     supported_by_evidence_ids: list[str] = Field(default_factory=list)
     supported_by_chunk_ids: list[int] = Field(default_factory=list)
+    model_name: str | None = None
+    candidate_chunk_ids: list[int] = Field(default_factory=list)
+    cited_chunk_ids: list[int] = Field(default_factory=list)
+    llm_validation_status: str | None = None
+    fallback_reason: str | None = None
 
 
 class ResolutionStep(BaseModel):

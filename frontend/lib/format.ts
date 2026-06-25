@@ -123,6 +123,7 @@ export function providerText(value: string | null | undefined) {
     heuristic_rerank: "启发式重排序",
     heuristic_reranker: "启发式重排序",
     pytesseract_ocr: "Tesseract OCR",
+    openai_compatible: "LLM 结构化分析",
     "local hybrid retrieval": "本地混合检索"
   };
   return mapping[value || ""] || value || "未知提供方";
@@ -149,6 +150,15 @@ export function reviewReasonText(value: string | null | undefined) {
     log_attached: "包含日志附件",
     ocr_failed: "OCR 降级或失败",
     insufficient_evidence: "证据不足",
+    llm_fallback: "LLM 回退",
+    llm_validation_failed: "LLM 校验失败",
+    llm_missing_api_key: "缺少 LLM API Key",
+    llm_timeout: "LLM 调用超时",
+    llm_provider_error: "LLM Provider 异常",
+    llm_invalid_json: "LLM JSON 无效",
+    llm_invalid_schema: "LLM Schema 无效",
+    llm_invalid_citation: "LLM 引用无效",
+    sensitive_access_or_data_category: "敏感权限或数据类别",
     seed_demo_review: "演示复核样例"
   };
   return mapping[value || ""] || value || "未知原因";

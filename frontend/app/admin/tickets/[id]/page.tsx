@@ -119,6 +119,14 @@ export default function AdminTicketDetailPage() {
   const latestAudit = ticket?.ai_analysis_audits?.[0];
   const evidenceItems = latestAudit?.evidence || [];
   const retrievedSources = latestAudit?.retrieved_sources?.length ? latestAudit.retrieved_sources : ticket?.related_kb_articles || [];
+  const finalDecision = latestAudit?.final_decision || {};
+  const fallbackReason = typeof finalDecision.fallback_reason === "string" ? finalDecision.fallback_reason : null;
+  const llmValidationStatus = typeof finalDecision.llm_validation_status === "string" ? finalDecision.llm_validation_status : null;
+  const analysisSourceText = fallbackReason
+    ? `已回退至规则分诊：${fallbackReason}`
+    : latestAudit?.provider === "openai_compatible" && llmValidationStatus === "passed"
+      ? "分析来源：LLM 结构化分析（证据校验通过）"
+      : "分析来源：规则分诊";
 
   return (
     <AppShell mode="admin" title="工单详情" subtitle="复核 AI 判断、分配团队、创建处置任务并记录处理过程">
@@ -173,6 +181,10 @@ export default function AdminTicketDetailPage() {
                     <p className="text-xs text-muted">检索方式</p>
                     <p className="mt-1 break-words text-sm font-semibold text-ink">{providerText(latestAudit?.retrieval_mode || "local hybrid retrieval")}</p>
                   </div>
+                </div>
+                <div className={`mt-3 rounded-md border p-3 text-sm leading-6 ${fallbackReason ? "border-amber-200 bg-amber-50 text-amber-800" : "border-cyan-100 bg-cyan-50 text-cyan-900"}`}>
+                  {analysisSourceText}
+                  {llmValidationStatus ? <span className="ml-2 text-xs font-semibold">校验状态：{llmValidationStatus}</span> : null}
                 </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-md border border-line bg-white p-3">
@@ -297,6 +309,9 @@ export default function AdminTicketDetailPage() {
                       <p className="break-all text-xs font-semibold text-ink">{run.run_id}</p>
                       <p className="mt-1 text-xs text-muted">{formatDate(run.created_at)} · {run.provider}</p>
                       <p className="mt-1 text-xs text-muted">引用片段：{run.source_chunk_ids?.join(", ") || "-"}</p>
+                      {typeof run.final_decision?.fallback_reason === "string" ? (
+                        <p className="mt-1 text-xs font-semibold text-amber-700">回退原因：{run.final_decision.fallback_reason}</p>
+                      ) : null}
                     </div>
                   ))}
                   {!ticket.ai_analysis_audits?.length ? <p className="text-sm text-muted">暂无分析运行记录。</p> : null}

@@ -90,6 +90,9 @@ export default async function KnowledgeBasePage() {
           <span>构建时间：{index.manifest?.rebuilt_at || "-"}</span>
           <span>降级原因：{index.manifest?.fallback_reason || "-"}</span>
         </div>
+        <p className="mt-3 text-xs text-muted">
+          MCP 工具层为只读 stdio 接口，复用当前 Demo Persona 访问边界，仅开放知识检索、工单分析摘要、索引状态和摄取历史查询。
+        </p>
       </div>
       <section className="mb-5 rounded-lg border border-line bg-white p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">

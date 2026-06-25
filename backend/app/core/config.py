@@ -29,9 +29,16 @@ class Settings(BaseSettings):
     sentence_transformer_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     reranker_provider: Literal["heuristic_reranker", "none"] = "heuristic_reranker"
     reranker_model: str = ""
+    analysis_provider: Literal["rule_fallback", "openai_compatible"] = "rule_fallback"
     triage_provider: Literal["rule_fallback", "openai_compatible"] = "rule_fallback"
     llm_provider: Literal["none", "openai_compatible"] = "none"
     vision_provider: Literal["none", "openai_compatible"] = "none"
+    openai_api_key: str = ""
+    openai_api_base: str = "https://api.openai.com/v1"
+    openai_model: str = ""
+    llm_analysis_timeout_seconds: float = 30.0
+    llm_analysis_max_evidence_chunks: int = 8
+    mcp_demo_user_id: int | None = None
 
     retrieval_top_k: int = 3
     retrieval_candidate_pool: int = 12

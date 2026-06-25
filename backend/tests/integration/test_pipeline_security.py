@@ -4,6 +4,7 @@ from pathlib import Path
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
+from app.core.config import get_settings
 from app.models import AIAnalysisAudit, AttachmentFileType, KnowledgeBaseArticle, Ticket, TicketAttachment, TicketTimelineEvent, User, UserRole
 from app.services.rag_service import index_status, rebuild_kb_index
 from app.services.ticket_service import reanalyze_ticket
@@ -106,3 +107,46 @@ def test_reanalyze_creates_new_run_not_overwriting(tmp_path: Path, monkeypatch):
     assert len(audits) == 2
     assert len({audit.run_id for audit in audits}) == 2
     assert any(event.event_type == "reanalyzed" for event in events)
+
+
+def test_llm_fallback_is_recorded_in_analysis_trace(tmp_path: Path, monkeypatch):
+    import app.services.rag_service as rag_service
+    from app.triage.optional_llm_provider import OpenAICompatibleTriageProvider
+
+    session = _session()
+    session.add(User(id=1, name="测试用户", email="test@example.com", role=UserRole.requester, department="研发"))
+    session.add(
+        KnowledgeBaseArticle(
+            title="生产 API 返回 500 错误",
+            category="软件系统",
+            summary="api 500",
+            content="HTTP 500 API exception troubleshooting",
+            tags=["api", "500"],
+        )
+    )
+    session.commit()
+    rebuild_kb_index(session, index_dir=tmp_path, force_fallback=True)
+    monkeypatch.setattr(rag_service, "DEFAULT_INDEX_DIR", tmp_path)
+    monkeypatch.setenv("ANALYSIS_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_MODEL", "fixture-model")
+    get_settings.cache_clear()
+    monkeypatch.setattr(OpenAICompatibleTriageProvider, "_call_provider", lambda self, messages: "not-json")
+
+    ticket = Ticket(requester_id=1, title="API 500", description="production API 500", user_category="软件系统", urgency="高")
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+
+    asyncio.run(reanalyze_ticket(session, ticket.id))
+    audit = session.exec(select(AIAnalysisAudit).where(AIAnalysisAudit.ticket_id == ticket.id)).first()
+    final_triage = next(stage for stage in audit.stage_traces if stage["name"] == "final_triage")
+
+    assert audit.provider == "rule_fallback"
+    assert audit.final_decision["fallback_reason"] == "invalid_json"
+    assert audit.final_decision["llm_validation_status"] == "failed"
+    assert final_triage["status"] == "degraded"
+    assert final_triage["error"] == "invalid_json"
+    assert "fallback_reason=invalid_json" in final_triage["output_summary"]
+    assert "llm_fallback" in audit.final_decision["review_reasons"]
+    get_settings.cache_clear()

@@ -158,8 +158,22 @@ class IncidentAnalysisPipeline:
                 stage.degrade("insufficient_evidence")
             stage.output(f"final_sources={len(final_sources)} threshold={retrieval.threshold}")
 
-        with self.trace.stage("final_triage", provider=provider.provider):
+        with self.trace.stage("final_triage", provider=provider.provider) as stage:
             decision = provider.decide(ticket.title, ticket.description, ticket.user_category, ticket.urgency, evidence_bundle, retrieval)
+            if decision.fallback_reason:
+                stage.degrade(decision.fallback_reason)
+            stage.output(
+                "provider={provider} model={model} validation={validation} confidence={confidence:.2f} "
+                "candidate_chunk_ids={candidate_ids} cited_chunk_ids={cited_ids} fallback_reason={fallback}".format(
+                    provider=decision.provider,
+                    model=decision.model_name or "-",
+                    validation=decision.llm_validation_status or "not_applicable",
+                    confidence=decision.confidence,
+                    candidate_ids=decision.candidate_chunk_ids or [source.chunk_id for source in retrieval.candidates[: self.settings.llm_analysis_max_evidence_chunks]],
+                    cited_ids=decision.cited_chunk_ids or decision.supported_by_chunk_ids,
+                    fallback=decision.fallback_reason or "-",
+                )
+            )
             decision = apply_review_policy(decision, retrieval, ocr_failed=ocr_failed)
 
         with self.trace.stage("resolution", provider="policy_playbook_fallback"):
@@ -213,5 +227,9 @@ class IncidentAnalysisPipeline:
                 "reranker": self.settings.reranker_provider,
                 "triage": decision.provider,
                 "ocr": self.settings.ocr_provider,
+                "analysis_provider": self.settings.analysis_provider,
+                "llm_model": decision.model_name or "",
+                "llm_validation_status": decision.llm_validation_status or "",
+                "fallback_reason": decision.fallback_reason or "",
             },
         )
