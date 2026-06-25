@@ -34,9 +34,13 @@ export interface KnowledgeBaseArticle {
   reading_time: number;
   hit_count: number;
   source_name?: string | null;
+  source_filename?: string | null;
   source_type?: string;
   source_checksum?: string | null;
   version?: string;
+  page_count?: number | null;
+  ingestion_run_id?: number | null;
+  kb_version?: string;
   updated_at?: string | null;
   ingestion_status?: string;
   index_status?: string;
@@ -105,10 +109,17 @@ export interface RetrievedSource {
   insufficient?: boolean;
   retrieval_mode: string;
   embedding_provider: string;
+  embedding_model?: string | null;
+  fallback_reason?: string | null;
   index_version?: string | null;
   corpus_hash?: string | null;
   content_hash?: string;
   article_version?: string;
+  kb_version?: string;
+  source_filename?: string | null;
+  source_type?: string | null;
+  page_number?: number | null;
+  ingestion_run_id?: number | null;
   evidence_excerpt_snapshot?: string;
   historical_snapshot?: boolean;
 }

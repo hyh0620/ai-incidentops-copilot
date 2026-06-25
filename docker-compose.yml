@@ -19,6 +19,8 @@ services:
       ALLOW_AUTO_REBUILD_INDEX: "false"
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
       MAX_UPLOAD_BYTES: 10485760
+      MAX_KB_UPLOAD_BYTES: 10485760
+      ALLOWED_KB_FILE_EXTENSIONS: .md,.txt,.pdf
       ENABLE_PII_REDACTION: "true"
       REDACT_INTERNAL_IPS: "false"
     ports:

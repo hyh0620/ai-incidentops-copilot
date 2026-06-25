@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from app.models import (
     AIReviewStatus,
     AttachmentFileType,
+    KBIngestionStatus,
     RemediationTaskStatus,
     TicketSeverity,
     TicketStatus,
@@ -53,13 +54,36 @@ class KnowledgeBaseArticleRead(KnowledgeBaseArticleCreate):
     id: int
     hit_count: int
     source_name: str | None = None
+    source_filename: str | None = None
     source_type: str = "manual"
     source_checksum: str | None = None
     version: str = "v1"
+    page_count: int | None = None
+    ingestion_run_id: int | None = None
+    kb_version: str = "kb-v1"
     updated_at: datetime | None = None
     ingestion_status: str = "ready"
     index_status: str = "stale"
     created_at: datetime
+
+
+class KBIngestionRunRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: KBIngestionStatus
+    source_filename: str | None = None
+    source_type: str | None = None
+    document_count: int
+    chunk_count: int
+    embedding_provider: str
+    embedding_model: str | None = None
+    kb_version: str
+    started_at: datetime
+    completed_at: datetime | None = None
+    latency_ms: float | None = None
+    fallback_reason: str | None = None
+    error_message: str | None = None
 
 
 class TicketTimelineEventRead(BaseModel):

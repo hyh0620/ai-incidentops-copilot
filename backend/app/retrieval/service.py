@@ -213,10 +213,17 @@ def build_candidates(
             "insufficient": fusion.get(chunk_id, 0.0) < settings.min_evidence_threshold,
             "retrieval_mode": "local hybrid retrieval",
             "embedding_provider": context.backend.provider,
+            "embedding_model": context.backend.model_name,
+            "fallback_reason": context.backend.fallback_reason,
             "index_version": context.manifest.get("index_version") if context.manifest else settings.index_version,
             "corpus_hash": context.manifest.get("corpus_hash") if context.manifest else None,
             "content_hash": chunk.content_hash,
             "article_version": article.version,
+            "kb_version": chunk.kb_version,
+            "source_filename": article.source_filename,
+            "source_type": article.source_type,
+            "page_number": chunk.page_number,
+            "ingestion_run_id": chunk.ingestion_run_id,
             "historical_snapshot": False,
         }
         candidates.append(
@@ -341,19 +348,26 @@ def threshold_evidence(
     return results
 
 
-def retrieval_result_from_candidates(context: RetrievalContext, candidates: list[RetrievalCandidate], final_sources: list[RetrievalCandidate]) -> RetrievalResult:
+def retrieval_result_from_candidates(
+    context: RetrievalContext,
+    candidates: list[RetrievalCandidate],
+    final_sources: list[RetrievalCandidate],
+    retrieval_mode: str = "local hybrid retrieval",
+) -> RetrievalResult:
     settings = get_settings()
     return RetrievalResult(
         candidates=candidates,
         final_sources=final_sources,
-        retrieval_mode="local hybrid retrieval",
+        retrieval_mode=retrieval_mode,
         index_version=context.manifest.get("index_version") if context.manifest else settings.index_version,
         corpus_hash=context.manifest.get("corpus_hash") if context.manifest else None,
         insufficient_evidence=len(final_sources) == 0,
         threshold=settings.min_evidence_threshold,
         diagnostics={
             "embedding_provider": context.backend.provider,
+            "embedding_model": context.backend.model_name,
             "provider_error": context.backend.error,
+            "fallback_reason": context.backend.fallback_reason,
             "degraded_reasons": context.degraded_reasons,
             "candidate_count": len(candidates),
             "final_source_count": len(final_sources),
@@ -377,3 +391,50 @@ def retrieve_evidence(session: Session, query: str, predicted_category: str | No
     reranked = rerank_candidates(context.enriched_query, candidates)
     final_sources = threshold_evidence(reranked, query=context.enriched_query, predicted_category=context.predicted_category)
     return retrieval_result_from_candidates(context, reranked, final_sources)
+
+
+def retrieve_evidence_by_mode(
+    session: Session,
+    query: str,
+    predicted_category: str | None,
+    keywords: list[str],
+    retrieval_mode: str,
+    index_dir: Path | None = None,
+    force_fallback: bool | None = None,
+) -> RetrievalResult:
+    settings = get_settings()
+    active_force_fallback = settings.embedding_provider == "local_hash_embedding_fallback" if force_fallback is None else force_fallback
+    context = prepare_retrieval_context(
+        session,
+        query=query,
+        predicted_category=predicted_category,
+        keywords=keywords,
+        index_dir=index_dir,
+        force_fallback=active_force_fallback,
+    )
+    if retrieval_mode == "bm25_only":
+        dense = {}
+        lexical = lexical_candidate_retrieval(context)
+        ranking_scores = lexical
+    elif retrieval_mode == "dense_only":
+        dense = dense_candidate_retrieval(context)
+        lexical = {}
+        ranking_scores = dense
+    elif retrieval_mode == "hybrid_rrf":
+        dense = dense_candidate_retrieval(context)
+        lexical = lexical_candidate_retrieval(context)
+        ranking_scores = rrf_fusion(context, dense, lexical)
+    else:
+        raise ValueError(f"Unsupported retrieval mode: {retrieval_mode}")
+
+    candidates = dedupe_candidates(build_candidates(context, dense, lexical, ranking_scores))
+    for candidate in candidates:
+        score = ranking_scores.get(candidate.chunk_id, 0.0)
+        candidate.fusion_score = score
+        candidate.ranking_stage = retrieval_mode
+        candidate.metadata["fusion_score"] = round(score, 6)
+        candidate.metadata["final_score"] = round(score, 6)
+        candidate.metadata["ranking_stage"] = retrieval_mode
+        candidate.metadata["retrieval_mode"] = retrieval_mode
+    final_sources = threshold_evidence(candidates, query=context.enriched_query, predicted_category=context.predicted_category)
+    return retrieval_result_from_candidates(context, candidates, final_sources, retrieval_mode=retrieval_mode)

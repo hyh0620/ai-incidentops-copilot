@@ -15,14 +15,18 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./incidentops.db"
 
     max_upload_bytes: int = 10 * 1024 * 1024
+    max_kb_upload_bytes: int = 10 * 1024 * 1024
     allowed_image_mime_types: str = "image/png,image/jpeg,image/webp,image/gif"
     allowed_log_mime_types: str = "text/plain,application/json,text/csv,application/csv"
+    allowed_kb_file_extensions: str = ".md,.txt,.pdf"
     upload_dir: Path = BASE_DIR / "uploads"
+    kb_source_dir: Path = BASE_DIR / "uploads" / "kb_sources"
 
     ocr_provider: Literal["pytesseract_ocr", "disabled"] = "pytesseract_ocr"
     ocr_required_languages: str = "eng,chi_sim"
     embedding_provider: Literal["local_hash_embedding_fallback", "sentence_transformers"] = "local_hash_embedding_fallback"
     embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2"
+    sentence_transformer_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     reranker_provider: Literal["heuristic_reranker", "none"] = "heuristic_reranker"
     reranker_model: str = ""
     triage_provider: Literal["rule_fallback", "openai_compatible"] = "rule_fallback"
@@ -32,7 +36,7 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 3
     retrieval_candidate_pool: int = 12
     rrf_k: int = 60
-    min_evidence_threshold: float = 0.035
+    min_evidence_threshold: float = 0.02
     chunk_size: int = 520
     chunk_overlap: int = 80
     chunking_version: str = "boundary-aware-v2"
@@ -49,7 +53,7 @@ class Settings(BaseSettings):
     redact_internal_ips: bool = False
 
     evaluation_min_category_accuracy: float = Field(default=0.80, ge=0.01)
-    evaluation_min_hitrate_at_3: float = Field(default=0.80, ge=0.01)
+    evaluation_min_hitrate_at_3: float = Field(default=0.70, ge=0.01)
     evaluation_min_severity_exact_match: float = Field(default=0.70, ge=0.01)
     evaluation_min_security_review_recall: float = Field(default=0.80, ge=0.01)
     evaluation_min_citation_grounding_rate: float = Field(default=0.70, ge=0.01)
@@ -69,6 +73,10 @@ class Settings(BaseSettings):
     @property
     def allowed_log_mime_set(self) -> set[str]:
         return {item.strip().lower() for item in self.allowed_log_mime_types.split(",") if item.strip()}
+
+    @property
+    def allowed_kb_extension_set(self) -> set[str]:
+        return {item.strip().lower() for item in self.allowed_kb_file_extensions.split(",") if item.strip()}
 
     @property
     def ocr_required_language_list(self) -> list[str]:

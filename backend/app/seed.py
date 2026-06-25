@@ -12,6 +12,7 @@ from app.models import (
     AIAnalysisAudit,
     AdminNote,
     AttachmentFileType,
+    KBIngestionRun,
     KnowledgeBaseChunk,
     KnowledgeBaseArticle,
     RemediationTask,
@@ -167,7 +168,7 @@ TICKET_EXAMPLES = [
 
 
 def reset_database(session: Session) -> None:
-    for model in [AIReview, AIAnalysisAudit, AdminNote, RemediationTask, TicketTimelineEvent, TicketAttachment, Ticket, KnowledgeBaseChunk, KnowledgeBaseArticle, User]:
+    for model in [AIReview, AIAnalysisAudit, AdminNote, RemediationTask, TicketTimelineEvent, TicketAttachment, Ticket, KnowledgeBaseChunk, KnowledgeBaseArticle, KBIngestionRun, User]:
         session.exec(delete(model))
     session.commit()
 

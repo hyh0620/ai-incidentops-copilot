@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+import json
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlmodel import Session, select
 
+from app.core.config import get_settings
 from app.core.security import Principal, get_current_principal, require_admin
 from app.database import get_session
-from app.models import KnowledgeBaseArticle
-from app.schemas import KBSearchRequest, KnowledgeBaseArticleCreate, KnowledgeBaseArticleRead
+from app.models import KBIngestionRun, KnowledgeBaseArticle
+from app.schemas import KBIngestionRunRead, KBSearchRequest, KnowledgeBaseArticleCreate, KnowledgeBaseArticleRead
+from app.services.kb_ingestion_service import save_and_ingest_upload
 from app.services.rag_service import index_status, keyword_search_articles, rebuild_kb_index
 
 router = APIRouter(prefix="/api/kb", tags=["knowledge-base"])
@@ -34,13 +39,53 @@ def get_kb_index_status(session: Session = Depends(get_session)) -> dict:
     return index_status(session)
 
 
+@router.get("/ingestions", response_model=list[KBIngestionRunRead])
+def list_ingestion_runs(
+    session: Session = Depends(get_session),
+) -> list[KBIngestionRun]:
+    return session.exec(select(KBIngestionRun).order_by(KBIngestionRun.started_at.desc()).limit(20)).all()
+
+
+@router.get("/evaluation/summary")
+def evaluation_summary() -> dict:
+    candidates = [
+        Path.cwd() / "artifacts" / "evaluation_report.json",
+        Path.cwd().parent / "artifacts" / "evaluation_report.json",
+    ]
+    for path in candidates:
+        if path.exists():
+            report = json.loads(path.read_text(encoding="utf-8"))
+            return {
+                "available": True,
+                "path": str(path),
+                "dataset_version": report.get("dataset_version"),
+                "retrieval_modes": report.get("retrieval_modes", {}),
+                "generated_from": "synthetic regression benchmark",
+            }
+    return {"available": False, "retrieval_modes": {}, "generated_from": "synthetic regression benchmark"}
+
+
+@router.post("/ingest", response_model=KBIngestionRunRead)
+async def ingest_kb_file(
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+    principal: Principal = Depends(get_current_principal),
+) -> KBIngestionRun:
+    require_admin(principal, session)
+    run = await save_and_ingest_upload(session, file)
+    if run.status == "failed":
+        raise HTTPException(status_code=400, detail=run.error_message or "知识库摄取失败")
+    return run
+
+
 @router.post("/index/rebuild")
 def rebuild_index(
     session: Session = Depends(get_session),
     principal: Principal = Depends(get_current_principal),
 ) -> dict:
     require_admin(principal, session)
-    return rebuild_kb_index(session, force_fallback=True)
+    settings = get_settings()
+    return rebuild_kb_index(session, force_fallback=settings.embedding_provider == "local_hash_embedding_fallback")
 
 
 @router.post("/search")

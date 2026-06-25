@@ -44,6 +44,14 @@ class AIReviewStatus(str, Enum):
     overridden = "overridden"
 
 
+class KBIngestionStatus(str, Enum):
+    pending = "pending"
+    running = "running"
+    completed = "completed"
+    degraded = "degraded"
+    failed = "failed"
+
+
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
@@ -96,9 +104,13 @@ class KnowledgeBaseArticle(SQLModel, table=True):
     reading_time: int = Field(default=3)
     hit_count: int = Field(default=0, index=True)
     source_name: str | None = Field(default=None, index=True)
+    source_filename: str | None = Field(default=None, index=True)
     source_type: str = Field(default="manual", index=True)
     source_checksum: str | None = Field(default=None, index=True)
     version: str = Field(default="v1", index=True)
+    page_count: int | None = Field(default=None)
+    ingestion_run_id: int | None = Field(default=None, foreign_key="kbingestionrun.id", index=True)
+    kb_version: str = Field(default="kb-v1", index=True)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     ingestion_status: str = Field(default="ready", index=True)
     index_status: str = Field(default="stale", index=True)
@@ -112,7 +124,27 @@ class KnowledgeBaseChunk(SQLModel, table=True):
     content: str = Field(sa_column=Column(Text))
     metadata_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column("metadata", JSON))
     content_hash: str = Field(index=True, unique=True)
+    page_number: int | None = Field(default=None, index=True)
+    kb_version: str = Field(default="kb-v1", index=True)
+    ingestion_run_id: int | None = Field(default=None, foreign_key="kbingestionrun.id", index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+
+class KBIngestionRun(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    status: KBIngestionStatus = Field(default=KBIngestionStatus.pending, index=True)
+    source_filename: str | None = Field(default=None, index=True)
+    source_type: str | None = Field(default=None, index=True)
+    document_count: int = Field(default=0)
+    chunk_count: int = Field(default=0)
+    embedding_provider: str = Field(default="local_hash_embedding_fallback", index=True)
+    embedding_model: str | None = Field(default=None, index=True)
+    kb_version: str = Field(default="kb-v1", index=True)
+    started_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    completed_at: datetime | None = Field(default=None, index=True)
+    latency_ms: float | None = Field(default=None)
+    fallback_reason: str | None = Field(default=None, sa_column=Column(Text))
+    error_message: str | None = Field(default=None, sa_column=Column(Text))
 
 
 class TicketTimelineEvent(SQLModel, table=True):

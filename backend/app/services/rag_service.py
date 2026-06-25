@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,14 +26,13 @@ except Exception:  # pragma: no cover - sentence-transformers can be absent in t
     SentenceTransformer = None
 
 from app.core.config import get_settings
-from app.models import KnowledgeBaseArticle, KnowledgeBaseChunk
+from app.models import KBIngestionRun, KnowledgeBaseArticle, KnowledgeBaseChunk
 from app.retrieval.chunker import boundary_aware_chunks
 from app.retrieval.reranker import HeuristicReranker
 from app.retrieval.tokenizer import tokenize
 
 
 settings = get_settings()
-DEFAULT_MODEL = settings.embedding_model
 DEFAULT_INDEX_DIR = Path(settings.vector_index_dir)
 INDEX_FILE = "kb.faiss"
 MANIFEST_FILE = "kb_manifest.json"
@@ -53,6 +53,11 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
     return boundary_aware_chunks(text, chunk_size, overlap)
 
 
+def _infer_page_number(content: str) -> int | None:
+    match = re.search(r"\[page:(\d+)\]", content, re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
 def _hash_embed(texts: list[str], dim: int = HASH_EMBED_DIM) -> np.ndarray:
     vectors = np.zeros((len(texts), dim), dtype="float32")
     for row, text in enumerate(texts):
@@ -70,42 +75,80 @@ def _hash_embed(texts: list[str], dim: int = HASH_EMBED_DIM) -> np.ndarray:
 class EmbeddingBackend:
     provider: str
     dimension: int
+    model_name: str | None = None
     model: Any | None = None
     error: str | None = None
+    fallback_reason: str | None = None
 
     def encode(self, texts: list[str]) -> np.ndarray:
         if self.model is not None:
-            vectors = self.model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
-            return np.asarray(vectors, dtype="float32")
+            try:
+                vectors = self.model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+                return np.asarray(vectors, dtype="float32")
+            except Exception as exc:
+                self.provider = "local_hash_embedding_fallback"
+                self.dimension = HASH_EMBED_DIM
+                self.model = None
+                self.error = f"embedding_inference_failed: {exc}"
+                self.fallback_reason = "embedding_inference_failed"
         return _hash_embed(texts, self.dimension)
 
 
 _EMBEDDING_BACKEND: EmbeddingBackend | None = None
 
 
+def _fallback_backend(reason: str | None = None, error: str | None = None) -> EmbeddingBackend:
+    return EmbeddingBackend(
+        provider="local_hash_embedding_fallback",
+        dimension=HASH_EMBED_DIM,
+        model_name="local_hash_embedding_fallback",
+        error=error,
+        fallback_reason=reason,
+    )
+
+
+def _classify_sentence_transformer_error(exc: Exception) -> str:
+    text = str(exc).lower()
+    if any(marker in text for marker in ["connection", "timed out", "timeout", "download", "offline", "network", "name resolution", "max retries"]):
+        return "model_download_failed"
+    return "model_load_failed"
+
+
+def clear_embedding_backend_cache() -> None:
+    global _EMBEDDING_BACKEND
+    _EMBEDDING_BACKEND = None
+
+
 def get_embedding_backend(force_fallback: bool = False) -> EmbeddingBackend:
     global _EMBEDDING_BACKEND
     if force_fallback:
-        return EmbeddingBackend(provider="local_hash_embedding_fallback", dimension=HASH_EMBED_DIM)
+        return _fallback_backend()
     if _EMBEDDING_BACKEND is not None:
         return _EMBEDDING_BACKEND
 
-    configured = get_settings().embedding_provider
-    if configured == "sentence_transformers" and SentenceTransformer is not None:
-        try:
-            model = SentenceTransformer(DEFAULT_MODEL)
-            dimension = int(model.get_sentence_embedding_dimension() or HASH_EMBED_DIM)
-            _EMBEDDING_BACKEND = EmbeddingBackend(provider=f"sentence_transformers:{DEFAULT_MODEL}", dimension=dimension, model=model)
+    current_settings = get_settings()
+    configured = current_settings.embedding_provider
+    model_name = current_settings.sentence_transformer_model or current_settings.embedding_model
+    if configured == "sentence_transformers":
+        if SentenceTransformer is None:
+            _EMBEDDING_BACKEND = _fallback_backend("missing_dependency", "missing_dependency: sentence-transformers is not installed")
             return _EMBEDDING_BACKEND
-        except Exception as exc:
+        try:
+            model = SentenceTransformer(model_name)
+            dimension = int(model.get_sentence_embedding_dimension() or HASH_EMBED_DIM)
             _EMBEDDING_BACKEND = EmbeddingBackend(
-                provider="local_hash_embedding_fallback",
-                dimension=HASH_EMBED_DIM,
-                error=f"sentence-transformers unavailable: {exc}",
+                provider="sentence_transformers",
+                dimension=dimension,
+                model_name=model_name,
+                model=model,
             )
             return _EMBEDDING_BACKEND
+        except Exception as exc:
+            reason = _classify_sentence_transformer_error(exc)
+            _EMBEDDING_BACKEND = _fallback_backend(reason, f"{reason}: {exc}")
+            return _EMBEDDING_BACKEND
 
-    _EMBEDDING_BACKEND = EmbeddingBackend(provider="local_hash_embedding_fallback", dimension=HASH_EMBED_DIM)
+    _EMBEDDING_BACKEND = _fallback_backend()
     return _EMBEDDING_BACKEND
 
 
@@ -129,15 +172,19 @@ def build_kb_chunks(session: Session) -> list[KnowledgeBaseChunk]:
             content_hash = _content_hash(f"{article.id}:{index}:{content}")
             desired_hashes.add(content_hash)
             metadata = {
-                    "title": article.title,
-                    "category": article.category,
-                    "tags": article.tags,
-                    "summary": article.summary,
-                    "source_name": article.source_name,
-                    "source_type": article.source_type,
-                    "article_version": article.version,
-                    "chunking_version": settings.chunking_version,
+                "title": article.title,
+                "category": article.category,
+                "tags": article.tags,
+                "summary": article.summary,
+                "source_name": article.source_name,
+                "source_filename": article.source_filename,
+                "source_type": article.source_type,
+                "article_version": article.version,
+                "kb_version": article.kb_version,
+                "ingestion_run_id": article.ingestion_run_id,
+                "chunking_version": settings.chunking_version,
             }
+            page_number = _infer_page_number(content)
             chunk = existing_by_hash.get(content_hash)
             if chunk is None:
                 chunk = KnowledgeBaseChunk(
@@ -146,6 +193,9 @@ def build_kb_chunks(session: Session) -> list[KnowledgeBaseChunk]:
                     content=content,
                     metadata_json=metadata,
                     content_hash=content_hash,
+                    page_number=page_number,
+                    kb_version=article.kb_version,
+                    ingestion_run_id=article.ingestion_run_id,
                     created_at=datetime.utcnow(),
                 )
             else:
@@ -153,6 +203,9 @@ def build_kb_chunks(session: Session) -> list[KnowledgeBaseChunk]:
                 chunk.chunk_index = index
                 chunk.content = content
                 chunk.metadata_json = metadata
+                chunk.page_number = page_number
+                chunk.kb_version = article.kb_version
+                chunk.ingestion_run_id = article.ingestion_run_id
             session.add(chunk)
             chunks.append(chunk)
         article.index_status = "ready"
@@ -211,6 +264,9 @@ def rebuild_kb_index(session: Session, index_dir: Path | None = None, force_fall
             "article_id": chunk.article_id,
             "chunk_id": chunk.id,
             "content_hash": chunk.content_hash,
+            "kb_version": chunk.kb_version,
+            "ingestion_run_id": chunk.ingestion_run_id,
+            "page_number": chunk.page_number,
         }
         for chunk in chunks
     ]
@@ -218,7 +274,9 @@ def rebuild_kb_index(session: Session, index_dir: Path | None = None, force_fall
         "index_version": settings.index_version,
         "corpus_hash": corpus_hash,
         "provider": backend.provider,
+        "embedding_model": backend.model_name,
         "provider_error": backend.error,
+        "fallback_reason": backend.fallback_reason,
         "retrieval_mode": "local hybrid retrieval",
         "faiss_enabled": faiss_written,
         "dimension": int(vectors.shape[1]) if len(vectors) else backend.dimension,
@@ -242,10 +300,26 @@ def index_status(session: Session, index_dir: Path | None = None) -> dict[str, A
     index_dir = index_dir or DEFAULT_INDEX_DIR
     manifest = _load_manifest(index_dir)
     chunks = session.exec(select(KnowledgeBaseChunk)).all()
+    article_count = session.exec(select(KnowledgeBaseArticle)).all()
+    latest_run = session.exec(select(KBIngestionRun).order_by(KBIngestionRun.started_at.desc())).first()
     chunk_ids = [chunk.id for chunk in chunks]
     stale_articles = session.exec(select(KnowledgeBaseArticle).where(KnowledgeBaseArticle.index_status == "stale")).all()
+    if latest_run:
+        latest_kb_version = latest_run.kb_version
+    elif manifest and manifest.get("source_versions"):
+        latest_kb_version = manifest["source_versions"][-1].get("kb_version") or "kb-v1"
+    else:
+        latest_kb_version = "kb-v1"
     if not manifest:
-        return {"status": "missing", "ready": False, "stale": True, "chunk_count": len(chunks)}
+        return {
+            "status": "missing",
+            "ready": False,
+            "stale": True,
+            "kb_version": latest_kb_version,
+            "article_count": len(article_count),
+            "chunk_count": len(chunks),
+            "latest_ingestion_run": latest_run.model_dump(mode="json") if latest_run else None,
+        }
     manifest_ids = manifest.get("chunk_ids", [])
     consistent = sorted(manifest_ids) == sorted(chunk_ids)
     stale = bool(stale_articles) or not consistent
@@ -253,12 +327,15 @@ def index_status(session: Session, index_dir: Path | None = None) -> dict[str, A
         "status": "ready" if not stale else "stale",
         "ready": not stale,
         "stale": stale,
+        "kb_version": latest_kb_version,
+        "article_count": len(article_count),
         "manifest": manifest,
         "chunk_count": len(chunks),
         "db_chunk_count": len(chunks),
         "manifest_chunk_count": len(manifest_ids),
         "consistent": consistent,
         "stale_article_count": len(stale_articles),
+        "latest_ingestion_run": latest_run.model_dump(mode="json") if latest_run else None,
     }
 
 
@@ -401,8 +478,17 @@ def hybrid_search_articles(
                 "insufficient": final_scores.get(chunk_id, 0.0) < settings.min_evidence_threshold,
                 "retrieval_mode": "local hybrid retrieval",
                 "embedding_provider": backend.provider,
+                "embedding_model": backend.model_name,
+                "fallback_reason": backend.fallback_reason,
                 "index_version": manifest.get("index_version") if manifest else settings.index_version,
                 "corpus_hash": manifest.get("corpus_hash") if manifest else None,
+                "content_hash": chunk.content_hash,
+                "article_version": article.version,
+                "kb_version": chunk.kb_version,
+                "source_filename": article.source_filename,
+                "source_type": article.source_type,
+                "page_number": chunk.page_number,
+                "ingestion_run_id": chunk.ingestion_run_id,
             }
         )
     candidates = []
