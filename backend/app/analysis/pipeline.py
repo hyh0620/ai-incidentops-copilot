@@ -65,6 +65,7 @@ class IncidentAnalysisPipeline:
         run_id = uuid4().hex
         evidence_items = []
         attachments: list[TicketAttachment] = []
+        ocr_attempted = False
         ocr_failed = False
 
         with self.trace.stage("input_validation", provider="internal", input_summary=f"ticket_id={ticket.id}"):
@@ -86,6 +87,7 @@ class IncidentAnalysisPipeline:
                 evidence_items.append(build_log_evidence(log_attachment.file_name, log_text, str(log_attachment.id)))
             screenshot_attachment = _latest_attachment(attachments, AttachmentFileType.screenshot)
             if screenshot_attachment:
+                ocr_attempted = True
                 ocr_evidence = build_ocr_evidence(screenshot_attachment.file_name, screenshot_attachment.file_path, str(screenshot_attachment.id))
                 ocr_failed = ocr_evidence.metadata.get("ocr_status") in {"failed", "unavailable"}
                 if ocr_failed:
@@ -174,7 +176,7 @@ class IncidentAnalysisPipeline:
                     fallback=decision.fallback_reason or "-",
                 )
             )
-            decision = apply_review_policy(decision, retrieval, ocr_failed=ocr_failed)
+            decision = apply_review_policy(decision, retrieval, ocr_failed=ocr_failed, ocr_attempted=ocr_attempted)
 
         with self.trace.stage("resolution", provider="policy_playbook_fallback"):
             if retrieval.insufficient_evidence:
@@ -197,7 +199,7 @@ class IncidentAnalysisPipeline:
                 )
 
         with self.trace.stage("risk_policy_and_review", provider="policy"):
-            decision = apply_review_policy(decision, retrieval, ocr_failed=ocr_failed)
+            decision = apply_review_policy(decision, retrieval, ocr_failed=ocr_failed, ocr_attempted=ocr_attempted)
 
         previous_diff = _diff_from_previous(
             self.session,

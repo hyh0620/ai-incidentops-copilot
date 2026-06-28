@@ -150,3 +150,28 @@ def test_llm_fallback_is_recorded_in_analysis_trace(tmp_path: Path, monkeypatch)
     assert "fallback_reason=invalid_json" in final_triage["output_summary"]
     assert "llm_fallback" in audit.final_decision["review_reasons"]
     get_settings.cache_clear()
+
+
+def test_log_attachment_does_not_trigger_ocr_review_reason(tmp_path: Path, monkeypatch):
+    import app.services.rag_service as rag_service
+
+    session = _session()
+    session.add(User(id=1, name="测试用户", email="test@example.com", role=UserRole.requester, department="研发"))
+    session.add(KnowledgeBaseArticle(title="VPN 无法连接", category="网络连接", summary="vpn", content="VPN timeout troubleshooting", tags=["vpn"]))
+    session.commit()
+    rebuild_kb_index(session, index_dir=tmp_path, force_fallback=True)
+    monkeypatch.setattr(rag_service, "DEFAULT_INDEX_DIR", tmp_path)
+
+    ticket = Ticket(requester_id=1, title="VPN timeout", description="VPN timeout", user_category="网络连接", urgency="高")
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    log_path = tmp_path / "vpn.log"
+    log_path.write_text("ERROR vpn-client connection timeout", encoding="utf-8")
+    session.add(TicketAttachment(ticket_id=ticket.id, file_name="vpn.log", file_path=str(log_path), file_type=AttachmentFileType.log))
+    session.commit()
+
+    asyncio.run(reanalyze_ticket(session, ticket.id))
+    audit = session.exec(select(AIAnalysisAudit).where(AIAnalysisAudit.ticket_id == ticket.id)).first()
+
+    assert "ocr_failed_or_unavailable" not in audit.final_decision["review_reasons"]

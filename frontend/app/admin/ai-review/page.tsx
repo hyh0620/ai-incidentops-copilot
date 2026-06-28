@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SeverityBadge, StatusBadge } from "@/components/Badge";
 import { clientFetch } from "@/lib/api";
-import { aiReviewStatusText, formatDate, percent, reviewReasonText, severityText } from "@/lib/format";
+import { aiReviewStatusText, formatDate, percent, reviewReasonDisplay, severityText, statusText } from "@/lib/format";
 import type { AIReview, Severity } from "@/types";
 
 const categories = ["账号权限", "网络连接", "软件系统", "系统资源", "安全风险", "数据库", "其他"];
@@ -89,18 +89,21 @@ export default function AIReviewPage() {
                       <div>
                         <div className="flex items-center gap-2 text-sm font-semibold text-violet-700">
                           {review.status === "pending" ? <ShieldAlert className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                          {aiReviewStatusText(review.status)}
+                          AI 复核状态：{aiReviewStatusText(review.status)}
                         </div>
                         <Link href={`/admin/tickets/${review.ticket_id}`} className="mt-2 block text-xl font-semibold text-ink hover:text-cyan-700">
                           {review.ticket?.title}
                         </Link>
                         <p className="mt-2 text-sm leading-6 text-muted">{review.ticket?.description}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {(review.review_reasons || []).map((reason) => (
-                            <span key={reason} className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
-                              {reviewReasonText(reason)}
-                            </span>
-                          ))}
+                          {(review.review_reasons || []).map((reason) => {
+                            const display = reviewReasonDisplay(reason);
+                            return (
+                              <span key={reason} className="rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800" title={display.description}>
+                                {display.title}
+                              </span>
+                            );
+                          })}
                           {review.run_id ? (
                             <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
                               分析运行 {review.run_id.slice(0, 8)}
@@ -108,12 +111,29 @@ export default function AIReviewPage() {
                           ) : null}
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col items-end gap-2 text-right">
+                        {review.ticket ? (
+                          <div>
+                            <p className="mb-1 text-xs text-muted">工单状态：{statusText[review.ticket.status]}</p>
+                            <StatusBadge value={review.ticket.status} />
+                          </div>
+                        ) : null}
+                        <div>
+                          <p className="mb-1 text-xs text-muted">AI 复核状态：{aiReviewStatusText(review.status)}</p>
+                          <span className="rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">{aiReviewStatusText(review.status)}</span>
+                        </div>
                         {review.ticket ? <SeverityBadge value={review.ticket.severity} /> : null}
-                        {review.ticket ? <StatusBadge value={review.ticket.status} /> : null}
                       </div>
                     </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-4">
+                      <div className="rounded-md bg-white p-3">
+                        <p className="text-xs text-muted">工单状态</p>
+                        <p className="mt-1 font-semibold text-ink">{review.ticket ? statusText[review.ticket.status] : "-"}</p>
+                      </div>
+                      <div className="rounded-md bg-white p-3">
+                        <p className="text-xs text-muted">AI 复核状态</p>
+                        <p className="mt-1 font-semibold text-ink">{aiReviewStatusText(review.status)}</p>
+                      </div>
                       <div className="rounded-md bg-slate-50 p-3">
                         <p className="text-xs text-muted">原类别</p>
                         <p className="mt-1 font-semibold text-ink">{review.original_category}</p>
@@ -131,6 +151,19 @@ export default function AIReviewPage() {
                         <p className="mt-1 font-semibold text-violet-950">{formatDate(review.created_at)}</p>
                       </div>
                     </div>
+                    {(review.review_reasons || []).length ? (
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {(review.review_reasons || []).map((reason) => {
+                          const display = reviewReasonDisplay(reason);
+                          return (
+                            <div key={reason} className="rounded-md border border-amber-100 bg-amber-50 p-3">
+                              <p className="text-sm font-semibold text-amber-900">{display.title}</p>
+                              <p className="mt-1 text-xs leading-5 text-amber-800">{display.description}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="rounded-lg border border-line bg-slate-50 p-4">
                     <div className="grid gap-3">

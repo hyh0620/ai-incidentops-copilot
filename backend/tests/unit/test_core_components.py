@@ -1,4 +1,5 @@
-from app.analysis.contracts import EvidenceBundle
+from app.analysis.contracts import EvidenceBundle, RetrievalResult, TriageDecision
+from app.analysis.policy import apply_review_policy
 from app.core.ocr_readiness import OCRProbe, check_ocr_readiness, clear_ocr_readiness_cache
 from app.evidence.redaction import redact_text
 from app.retrieval.chunker import boundary_aware_chunks
@@ -94,6 +95,58 @@ def test_rule_provider_does_not_high_confidence_without_evidence():
 
     assert decision.confidence <= 0.69
     assert decision.supported_by_evidence_ids == []
+
+
+def _decision(review_reasons: list[str] | None = None) -> TriageDecision:
+    return TriageDecision(
+        predicted_category="其他",
+        severity="medium",
+        confidence=0.82,
+        rationale="fixture",
+        requires_human_review=False,
+        review_reasons=review_reasons or [],
+        provider="rule_fallback",
+        supported_by_evidence_ids=["ev-text-0"],
+        supported_by_chunk_ids=[],
+    )
+
+
+def _retrieval(insufficient: bool = False) -> RetrievalResult:
+    return RetrievalResult(
+        retrieval_mode="test",
+        threshold=0.02,
+        insufficient_evidence=insufficient,
+    )
+
+
+def test_review_policy_does_not_add_ocr_reason_for_text_only_ticket():
+    decision = apply_review_policy(_decision(["ocr_failed_or_unavailable"]), _retrieval(), ocr_attempted=False, ocr_failed=False)
+
+    assert "ocr_failed_or_unavailable" not in decision.review_reasons
+
+
+def test_review_policy_does_not_add_ocr_reason_for_log_only_ticket():
+    decision = apply_review_policy(_decision(), _retrieval(), ocr_attempted=False, ocr_failed=True)
+
+    assert "ocr_failed_or_unavailable" not in decision.review_reasons
+
+
+def test_review_policy_does_not_add_ocr_reason_when_image_ocr_succeeds():
+    decision = apply_review_policy(_decision(), _retrieval(), ocr_attempted=True, ocr_failed=False)
+
+    assert "ocr_failed_or_unavailable" not in decision.review_reasons
+
+
+def test_review_policy_adds_ocr_reason_when_image_ocr_fails():
+    decision = apply_review_policy(_decision(), _retrieval(), ocr_attempted=True, ocr_failed=True)
+
+    assert "ocr_failed_or_unavailable" in decision.review_reasons
+
+
+def test_review_policy_keeps_insufficient_retrieval_evidence_reason():
+    decision = apply_review_policy(_decision(), _retrieval(insufficient=True), ocr_attempted=False, ocr_failed=False)
+
+    assert "insufficient_retrieval_evidence" in decision.review_reasons
 
 
 def test_ocr_readiness_reports_ready_when_package_binary_and_languages_exist():

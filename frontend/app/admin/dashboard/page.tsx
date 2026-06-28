@@ -6,7 +6,7 @@ import { SeverityBadge, StatusBadge } from "@/components/Badge";
 import { LocalDate, LocalTodayCount } from "@/components/LocalDate";
 import { BarList } from "@/components/SimpleChart";
 import { StatCard } from "@/components/StatCard";
-import { percent, severityText } from "@/lib/format";
+import { aiReviewStatusText, percent, severityText } from "@/lib/format";
 import { serverFetch } from "@/lib/server-api";
 import type { AIReview, AnalyticsSummary, Ticket } from "@/types";
 
@@ -84,7 +84,9 @@ export default async function AdminDashboardPage() {
                     <p className="font-medium text-ink">{review.ticket?.title}</p>
                     <p className="mt-1 text-sm text-muted">{review.original_category} · 原始等级 {severityText[review.original_severity]}</p>
                   </div>
-                  <span className="rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">待复核</span>
+                  <span className="rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
+                    AI 复核状态：{aiReviewStatusText(review.status)}
+                  </span>
                 </div>
               </Link>
             ))}

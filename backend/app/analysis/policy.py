@@ -1,8 +1,17 @@
 from app.analysis.contracts import RetrievalResult, TriageDecision
 
 
-def apply_review_policy(decision: TriageDecision, retrieval: RetrievalResult, ocr_failed: bool = False) -> TriageDecision:
-    reasons = list(decision.review_reasons)
+def apply_review_policy(
+    decision: TriageDecision,
+    retrieval: RetrievalResult,
+    ocr_failed: bool = False,
+    ocr_attempted: bool = False,
+) -> TriageDecision:
+    reasons = [
+        reason
+        for reason in decision.review_reasons
+        if reason != "ocr_failed_or_unavailable" or (ocr_attempted and ocr_failed)
+    ]
     if decision.confidence < 0.7:
         reasons.append("low_confidence")
     if decision.severity in {"high", "critical"}:
@@ -13,7 +22,7 @@ def apply_review_policy(decision: TriageDecision, retrieval: RetrievalResult, oc
         reasons.append("sensitive_access_or_data_category")
     if retrieval.insufficient_evidence:
         reasons.append("insufficient_retrieval_evidence")
-    if ocr_failed:
+    if ocr_attempted and ocr_failed:
         reasons.append("ocr_failed_or_unavailable")
     if decision.fallback_reason:
         reasons.append("llm_fallback")

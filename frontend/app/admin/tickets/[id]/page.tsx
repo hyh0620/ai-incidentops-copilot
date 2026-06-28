@@ -15,6 +15,7 @@ import {
   formatDate,
   percent,
   providerText,
+  reviewReasonDisplay,
   severityText,
   stageNameText,
   stageStatusText,
@@ -123,6 +124,8 @@ export default function AdminTicketDetailPage() {
   const fallbackReason = typeof finalDecision.fallback_reason === "string" ? finalDecision.fallback_reason : null;
   const llmValidationStatus = typeof finalDecision.llm_validation_status === "string" ? finalDecision.llm_validation_status : null;
   const signalTags = Array.from(new Set(evidenceItems.flatMap((item) => item.signal_tags || []))).slice(0, 12);
+  const finalDecisionReasons = Array.isArray(finalDecision.review_reasons) ? finalDecision.review_reasons.filter((item): item is string => typeof item === "string") : [];
+  const reviewReasons = ticket?.ai_review?.review_reasons?.length ? ticket.ai_review.review_reasons : finalDecisionReasons;
   const analysisSourceText = fallbackReason
     ? `已回退至规则分诊：${fallbackReason}`
     : latestAudit?.provider === "openai_compatible" && llmValidationStatus === "passed"
@@ -199,7 +202,23 @@ export default function AdminTicketDetailPage() {
                 </div>
                 {latestAudit?.uncertainty ? (
                   <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-                    不确定性：{latestAudit.uncertainty}
+                    不确定性：系统要求人工复核，原因见下方说明。
+                  </div>
+                ) : null}
+                {reviewReasons.length ? (
+                  <div className="mt-4 rounded-md border border-amber-100 bg-amber-50 p-3">
+                    <p className="text-xs font-semibold text-amber-900">人工复核原因</p>
+                    <div className="mt-3 grid gap-2">
+                      {reviewReasons.map((reason) => {
+                        const display = reviewReasonDisplay(reason);
+                        return (
+                          <div key={reason} className="rounded-md bg-white/70 p-3">
+                            <p className="text-sm font-semibold text-amber-900">{display.title}</p>
+                            <p className="mt-1 text-xs leading-5 text-amber-800">{display.description}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ) : null}
                 <div className="mt-4 rounded-md border border-line bg-white p-3">

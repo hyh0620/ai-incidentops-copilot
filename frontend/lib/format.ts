@@ -157,30 +157,80 @@ export function aiReviewStatusText(value: string | null | undefined) {
   return mapping[value || ""] || value || "未知状态";
 }
 
-export function reviewReasonText(value: string | null | undefined) {
-  const mapping: Record<string, string> = {
-    low_confidence: "低置信度",
-    high_severity: "高严重等级",
-    critical_severity: "严重事件",
-    high_or_critical_severity: "高危或严重事件",
-    security_risk: "安全风险",
-    security_category: "安全风险类别",
-    suspicious_keywords: "命中可疑关键词",
-    log_attached: "包含日志附件",
-    ocr_failed: "OCR 降级或失败",
-    insufficient_evidence: "证据不足",
-    llm_fallback: "LLM 回退",
-    llm_validation_failed: "LLM 校验失败",
-    llm_missing_api_key: "缺少 LLM API Key",
-    llm_timeout: "LLM 调用超时",
-    llm_provider_error: "LLM Provider 异常",
-    llm_invalid_json: "LLM JSON 无效",
-    llm_invalid_schema: "LLM Schema 无效",
-    llm_invalid_citation: "LLM 引用无效",
-    sensitive_access_or_data_category: "敏感权限或数据类别",
-    seed_demo_review: "演示复核样例"
+export interface ReviewReasonDisplay {
+  title: string;
+  description: string;
+}
+
+export function reviewReasonDisplay(value: string | null | undefined): ReviewReasonDisplay {
+  const mapping: Record<string, ReviewReasonDisplay> = {
+    insufficient_retrieval_evidence: {
+      title: "检索证据不足",
+      description: "未找到足够强的知识库依据，需人工确认。"
+    },
+    ocr_failed_or_unavailable: {
+      title: "OCR 识别失败或不可用",
+      description: "图片或扫描附件未能可靠提取文本，需人工确认。"
+    },
+    high_or_critical_severity: {
+      title: "高危或严重事件",
+      description: "当前事件等级较高，需要管理员确认。"
+    },
+    high_severity: {
+      title: "高危或严重事件",
+      description: "当前事件等级较高，需要管理员确认。"
+    },
+    critical_severity: {
+      title: "高危或严重事件",
+      description: "当前事件等级较高，需要管理员确认。"
+    },
+    security_category: {
+      title: "安全风险事件",
+      description: "涉及安全风险，需人工确认处置。"
+    },
+    security_risk: {
+      title: "安全风险事件",
+      description: "涉及安全风险，需人工确认处置。"
+    },
+    suspicious_keywords: {
+      title: "安全风险事件",
+      description: "命中可疑关键词，需人工确认处置。"
+    },
+    sensitive_access_or_data_category: {
+      title: "敏感权限或数据事件",
+      description: "涉及账号、权限或敏感数据，需人工确认。"
+    },
+    low_confidence: {
+      title: "低置信度分析",
+      description: "系统判断置信度较低，需要人工确认。"
+    },
+    llm_fallback: {
+      title: "分析已降级回退",
+      description: "可选 LLM 分析未通过校验，已回退到规则分诊。"
+    },
+    llm_validation_failed: {
+      title: "LLM 输出校验失败",
+      description: "结构化输出或引用校验未通过，需人工确认。"
+    },
+    seed_demo_review: {
+      title: "演示复核样例",
+      description: "合成演示数据中的人工复核记录。"
+    }
   };
-  return mapping[value || ""] || value || "未知原因";
+  if (value?.startsWith("llm_")) {
+    return {
+      title: "LLM 分析降级",
+      description: "可选 LLM 分析未完成或未通过校验，需人工确认。"
+    };
+  }
+  return mapping[value || ""] || {
+    title: "需要人工复核",
+    description: "系统记录了新的复核原因，建议查看原始分析记录（调试）。"
+  };
+}
+
+export function reviewReasonText(value: string | null | undefined) {
+  return reviewReasonDisplay(value).title;
 }
 
 export function timelineContentText(value: string | null | undefined) {
@@ -197,7 +247,7 @@ export function timelineContentText(value: string | null | undefined) {
     return `提供方：${providerText(provider.trim())} `;
   });
   text = text.replace(/trace_id=/g, "追踪 ID：");
-  text = text.replace(/high_or_critical_severity|security_category|low_confidence|suspicious_keywords|log_attached|ocr_failed|insufficient_evidence/g, (reason) => {
+  text = text.replace(/insufficient_retrieval_evidence|ocr_failed_or_unavailable|high_or_critical_severity|security_category|sensitive_access_or_data_category|low_confidence|suspicious_keywords|log_attached|ocr_failed|insufficient_evidence/g, (reason) => {
     return reviewReasonText(reason);
   });
   return text;
