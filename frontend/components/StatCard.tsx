@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
-export function StatCard({ label, value, hint, icon: Icon }: { label: string; value: string | number; hint?: string; icon: LucideIcon }) {
+export function StatCard({ label, value, hint, icon: Icon }: { label: string; value: ReactNode; hint?: string; icon: LucideIcon }) {
   return (
     <div className="rounded-lg border border-line bg-panel p-5 shadow-soft">
       <div className="flex items-start justify-between gap-4">

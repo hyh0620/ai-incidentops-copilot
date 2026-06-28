@@ -2,7 +2,6 @@ import hashlib
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -11,6 +10,7 @@ from fastapi import HTTPException, UploadFile
 from sqlmodel import Session, func, select
 
 from app.core.config import get_settings
+from app.core.time import utc_now
 from app.models import KBIngestionRun, KBIngestionStatus, KnowledgeBaseArticle, KnowledgeBaseChunk
 from app.services.rag_service import DEFAULT_INDEX_DIR, rebuild_kb_index
 
@@ -196,7 +196,7 @@ def _upsert_article(
         article.index_status = "stale"
         if content_changed:
             article.version = _next_version(article.version)
-    article.updated_at = datetime.utcnow()
+    article.updated_at = utc_now()
     session.add(article)
     session.commit()
     session.refresh(article)
@@ -225,7 +225,7 @@ def ingest_kb_file(
         kb_version=kb_version,
         embedding_provider="pending",
         embedding_model=None,
-        started_at=datetime.utcnow(),
+        started_at=utc_now(),
     )
     session.add(run)
     session.commit()
@@ -257,7 +257,7 @@ def ingest_kb_file(
         run.embedding_provider = str(manifest.get("provider") or settings.embedding_provider)
         run.embedding_model = manifest.get("embedding_model") or settings.sentence_transformer_model
         run.fallback_reason = fallback_reason
-        run.completed_at = datetime.utcnow()
+        run.completed_at = utc_now()
         run.latency_ms = round((time.perf_counter() - started) * 1000, 2)
         session.add(run)
         session.commit()
@@ -266,7 +266,7 @@ def ingest_kb_file(
     except Exception as exc:
         run.status = KBIngestionStatus.failed
         run.error_message = str(exc)
-        run.completed_at = datetime.utcnow()
+        run.completed_at = utc_now()
         run.latency_ms = round((time.perf_counter() - started) * 1000, 2)
         session.add(run)
         session.commit()
@@ -279,7 +279,7 @@ async def save_and_ingest_upload(session: Session, file: UploadFile) -> KBIngest
     content = await file.read(settings.max_kb_upload_bytes + 1)
     source_type = validate_kb_source(source_filename, content)
     settings.kb_source_dir.mkdir(parents=True, exist_ok=True)
-    stored_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid4().hex}_{source_filename}"
+    stored_name = f"{utc_now().strftime('%Y%m%d%H%M%S')}_{uuid4().hex}_{source_filename}"
     target = settings.kb_source_dir / stored_name
     target.write_bytes(content)
     run = ingest_kb_file(session, target, original_filename=source_filename)

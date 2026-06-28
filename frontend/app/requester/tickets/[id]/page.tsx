@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import { AppShell } from "@/components/AppShell";
 import { SeverityBadge, StatusBadge, TaskBadge } from "@/components/Badge";
-import { attachmentTypeText, eventTypeText, formatDate, percent, severityText, timelineContentText } from "@/lib/format";
+import { LocalDate } from "@/components/LocalDate";
+import { attachmentTypeText, eventTypeText, percent, severityText, timelineContentText } from "@/lib/format";
 import { serverFetch } from "@/lib/server-api";
 import type { TicketDetail } from "@/types";
 
@@ -38,7 +39,7 @@ export default async function RequesterTicketDetailPage({ params }: { params: Pr
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-semibold text-ink">{ticket.title}</h2>
-                <p className="mt-2 text-sm text-muted">提交人：{ticket.requester?.name} · {formatDate(ticket.created_at)}</p>
+                <p className="mt-2 text-sm text-muted">提交人：{ticket.requester?.name} · <LocalDate value={ticket.created_at} /></p>
               </div>
               <div className="flex gap-2">
                 <SeverityBadge value={ticket.severity} />
@@ -137,7 +138,7 @@ export default async function RequesterTicketDetailPage({ params }: { params: Pr
               {ticket.timeline.map((event) => (
                 <div key={event.id} className="border-l-2 border-cyan-200 pl-3">
                   <p className="text-sm font-medium text-ink">{timelineContentText(event.content)}</p>
-                  <p className="mt-1 text-xs text-muted">{formatDate(event.created_at)} · {eventTypeText(event.event_type)}</p>
+                  <p className="mt-1 text-xs text-muted"><LocalDate value={event.created_at} /> · {eventTypeText(event.event_type)}</p>
                 </div>
               ))}
             </div>

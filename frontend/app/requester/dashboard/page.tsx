@@ -3,8 +3,8 @@ import Link from "next/link";
 
 import { AppShell } from "@/components/AppShell";
 import { SeverityBadge, StatusBadge } from "@/components/Badge";
+import { LocalDate } from "@/components/LocalDate";
 import { StatCard } from "@/components/StatCard";
-import { formatDate } from "@/lib/format";
 import { serverFetch } from "@/lib/server-api";
 import type { KnowledgeBaseArticle, Ticket } from "@/types";
 
@@ -68,7 +68,7 @@ export default async function RequesterDashboardPage() {
               </Link>
             ))}
           </div>
-          <p className="mt-4 text-xs text-muted">最近同步：{formatDate(new Date().toISOString())}</p>
+          <p className="mt-4 text-xs text-muted">最近同步：<LocalDate value={new Date().toISOString()} /></p>
         </section>
       </div>
     </AppShell>

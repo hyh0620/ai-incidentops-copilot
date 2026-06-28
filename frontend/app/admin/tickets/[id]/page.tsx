@@ -122,6 +122,7 @@ export default function AdminTicketDetailPage() {
   const finalDecision = latestAudit?.final_decision || {};
   const fallbackReason = typeof finalDecision.fallback_reason === "string" ? finalDecision.fallback_reason : null;
   const llmValidationStatus = typeof finalDecision.llm_validation_status === "string" ? finalDecision.llm_validation_status : null;
+  const signalTags = Array.from(new Set(evidenceItems.flatMap((item) => item.signal_tags || []))).slice(0, 12);
   const analysisSourceText = fallbackReason
     ? `已回退至规则分诊：${fallbackReason}`
     : latestAudit?.provider === "openai_compatible" && llmValidationStatus === "passed"
@@ -201,9 +202,20 @@ export default function AdminTicketDetailPage() {
                     不确定性：{latestAudit.uncertainty}
                   </div>
                 ) : null}
-                <pre className="mt-4 max-h-64 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-cyan-50">
-                  {JSON.stringify(ticket.ai_signals, null, 2)}
-                </pre>
+                <div className="mt-4 rounded-md border border-line bg-white p-3">
+                  <p className="text-xs font-semibold text-muted">命中信号</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {signalTags.length ? signalTags.map((tag) => (
+                      <span key={tag} className="rounded-md bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700">{tag}</span>
+                    )) : <span className="text-xs text-muted">暂无结构化信号，查看下方证据区确认日志 / OCR 提取结果。</span>}
+                  </div>
+                </div>
+                <details className="mt-4 rounded-md border border-line bg-slate-50">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">原始分析记录（调试）</summary>
+                  <pre className="max-h-64 overflow-auto border-t border-line bg-slate-950 p-4 text-xs leading-5 text-cyan-50">
+                    {JSON.stringify(ticket.ai_signals, null, 2)}
+                  </pre>
+                </details>
               </div>
 
               <div className="rounded-lg border border-line bg-white p-5 shadow-soft">

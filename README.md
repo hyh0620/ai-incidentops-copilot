@@ -231,6 +231,117 @@ docker compose up --build
 
 `GET /api/health/ready` 会真实探测 OCR 状态：`pytesseract` Python 包、Tesseract 可执行文件、已安装语言、必需语言、就绪状态和降级原因。OCR 不可用时接口仍返回 200，但整体 `status` 为 `degraded`，表示服务可运行但截图 OCR 会降级。
 
+## 本地端到端演示
+
+### 启动环境
+
+从项目根目录启动：
+
+```bash
+export FRONTEND_PORT=3001
+docker compose up -d --build
+docker compose ps
+```
+
+Docker Desktop 必须先启动。启动后访问：
+
+- 前端地址：http://localhost:3001
+- 后端 API：http://localhost:8000
+
+`docker compose ps` 中 backend 应显示 `healthy`，frontend 应显示运行中。
+
+### 角色入口
+
+| 角色 | 页面入口 | 权限 |
+| --- | --- | --- |
+| 报障员工 A | `/requester/dashboard` | 仅查看和提交自己的工单 |
+| 运维管理员 | `/admin/dashboard` | 查看全部工单、分析记录、复核和统计 |
+
+身份切换后会自动跳转到对应角色首页；这是本地 Demo RBAC，不是生产级认证。
+
+### 创建 VPN 日志文件
+
+在本机创建可上传的 UTF-8 `.log` 文件：
+
+```bash
+cat > ~/Desktop/incidentops-demo-vpn.log <<EOF
+$(date -u +"%Y-%m-%dT%H:%M:%SZ") ERROR vpn-client connection timeout
+gateway=vpn.corp.example.com
+user=demo.employee@example.com
+Authorization: Bearer demo-token-for-redaction-test
+password=demo-password-for-redaction-test
+message=Unable to establish VPN tunnel after network switch
+EOF
+```
+
+### 报障员工提交工单
+
+以“报障员工 A”进入：
+
+```text
+/requester/tickets/new
+```
+
+填写：
+
+```text
+标题：
+企业 VPN 连接超时，无法访问内部系统
+
+问题描述：
+今天远程办公时无法连接企业 VPN。切换家庭网络后仍然提示连接超时，导致无法访问内部系统。请协助排查网关连接、账号权限和客户端配置。
+
+类别：
+网络连接
+
+紧急程度：
+高
+
+受影响系统：
+企业 VPN
+
+联系邮箱：
+demo.employee@example.com
+
+日志文件：
+~/Desktop/incidentops-demo-vpn.log
+```
+
+预期结果：
+
+- 显示网络连接、高风险；
+- 记录显示浏览器本地时间；
+- 邮箱、Bearer Token、password 被脱敏；
+- 展示知识库证据、检索来源、分析运行记录和 Trace；
+- 高风险工单进入人工复核。
+
+### 运维管理员查看与复核
+
+1. 切换到运维管理员，或进入 `/admin/tickets`。
+2. 搜索 `企业 VPN 连接超时`。
+3. 打开最新工单。
+4. 查看脱敏日志、知识库来源、混合检索、运行 ID、Trace 和人工复核原因。
+5. 进入 `/admin/ai-review`。
+6. 填写复核备注并点击“通过建议”。
+
+示例备注：
+
+```text
+已核对 VPN 日志和知识库证据。建议先检查 VPN 客户端、证书、网络出口和网关日志；同意按“网络连接 / 高优先级”处理。
+```
+
+通过后，待复核数量减少，已通过数量增加。
+
+### 可选：恢复种子数据
+
+> 警告：`python -m app.seed --reset` 会清空当前工单、附件、分析运行和复核记录；它不属于日常启动或展示步骤，仅在明确需要完全重新初始化时使用。
+
+### 停止环境
+
+```bash
+docker compose down
+```
+
 ## 测试与评估
 
 ```bash

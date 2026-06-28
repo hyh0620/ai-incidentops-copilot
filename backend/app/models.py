@@ -5,6 +5,8 @@ from typing import Any
 from sqlalchemy import Column, JSON, Text
 from sqlmodel import Field, SQLModel
 
+from app.core.time import utc_now
+
 
 class UserRole(str, Enum):
     requester = "requester"
@@ -58,7 +60,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     role: UserRole = Field(default=UserRole.requester, index=True)
     department: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class Ticket(SQLModel, table=True):
@@ -78,8 +80,8 @@ class Ticket(SQLModel, table=True):
     next_steps: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     related_kb_articles: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     ai_signals: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now, index=True)
+    updated_at: datetime = Field(default_factory=utc_now)
 
 
 class TicketAttachment(SQLModel, table=True):
@@ -91,7 +93,7 @@ class TicketAttachment(SQLModel, table=True):
     mime_type: str | None = Field(default=None, index=True)
     size_bytes: int = Field(default=0)
     checksum: str | None = Field(default=None, index=True)
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_at: datetime = Field(default_factory=utc_now)
 
 
 class KnowledgeBaseArticle(SQLModel, table=True):
@@ -111,10 +113,10 @@ class KnowledgeBaseArticle(SQLModel, table=True):
     page_count: int | None = Field(default=None)
     ingestion_run_id: int | None = Field(default=None, foreign_key="kbingestionrun.id", index=True)
     kb_version: str = Field(default="kb-v1", index=True)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=utc_now)
     ingestion_status: str = Field(default="ready", index=True)
     index_status: str = Field(default="stale", index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class KnowledgeBaseChunk(SQLModel, table=True):
@@ -127,7 +129,7 @@ class KnowledgeBaseChunk(SQLModel, table=True):
     page_number: int | None = Field(default=None, index=True)
     kb_version: str = Field(default="kb-v1", index=True)
     ingestion_run_id: int | None = Field(default=None, foreign_key="kbingestionrun.id", index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=utc_now, index=True)
 
 
 class KBIngestionRun(SQLModel, table=True):
@@ -140,7 +142,7 @@ class KBIngestionRun(SQLModel, table=True):
     embedding_provider: str = Field(default="local_hash_embedding_fallback", index=True)
     embedding_model: str | None = Field(default=None, index=True)
     kb_version: str = Field(default="kb-v1", index=True)
-    started_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    started_at: datetime = Field(default_factory=utc_now, index=True)
     completed_at: datetime | None = Field(default=None, index=True)
     latency_ms: float | None = Field(default=None)
     fallback_reason: str | None = Field(default=None, sa_column=Column(Text))
@@ -152,7 +154,7 @@ class TicketTimelineEvent(SQLModel, table=True):
     ticket_id: int = Field(foreign_key="ticket.id", index=True)
     event_type: str = Field(index=True)
     content: str = Field(sa_column=Column(Text))
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=utc_now, index=True)
 
 
 class RemediationTask(SQLModel, table=True):
@@ -163,7 +165,7 @@ class RemediationTask(SQLModel, table=True):
     assigned_to: str = Field(index=True)
     status: RemediationTaskStatus = Field(default=RemediationTaskStatus.todo, index=True)
     due_date: datetime | None = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class AdminNote(SQLModel, table=True):
@@ -171,7 +173,7 @@ class AdminNote(SQLModel, table=True):
     ticket_id: int = Field(foreign_key="ticket.id", index=True)
     author: str = Field(default="管理员", index=True)
     content: str = Field(sa_column=Column(Text))
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=utc_now, index=True)
 
 
 class AIReview(SQLModel, table=True):
@@ -186,7 +188,7 @@ class AIReview(SQLModel, table=True):
     correction_reason: str | None = Field(default=None, sa_column=Column(Text))
     reviewer_note: str | None = Field(default=None, sa_column=Column(Text))
     status: AIReviewStatus = Field(default=AIReviewStatus.pending, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=utc_now, index=True)
 
 
 class AIAnalysisAudit(SQLModel, table=True):
@@ -209,4 +211,4 @@ class AIAnalysisAudit(SQLModel, table=True):
     evidence: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     retrieved_sources: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     uncertainty: str | None = Field(default=None, sa_column=Column(Text))
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=utc_now, index=True)

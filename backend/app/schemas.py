@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 
+from app.core.time import utc_isoformat
 from app.models import (
     AIReviewStatus,
     AttachmentFileType,
@@ -14,9 +15,17 @@ from app.models import (
 )
 
 
-class UserRead(BaseModel):
+class UTCBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    @field_serializer("*", when_used="json", check_fields=False)
+    def serialize_utc_datetime(self, value: Any) -> Any:
+        if isinstance(value, datetime):
+            return utc_isoformat(value)
+        return value
+
+
+class UserRead(UTCBaseModel):
     id: int
     name: str
     email: str
@@ -25,9 +34,7 @@ class UserRead(BaseModel):
     created_at: datetime
 
 
-class AttachmentRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class AttachmentRead(UTCBaseModel):
     id: int
     ticket_id: int
     file_name: str
@@ -39,7 +46,7 @@ class AttachmentRead(BaseModel):
     uploaded_at: datetime
 
 
-class KnowledgeBaseArticleCreate(BaseModel):
+class KnowledgeBaseArticleCreate(UTCBaseModel):
     title: str
     category: str
     content: str
@@ -49,8 +56,6 @@ class KnowledgeBaseArticleCreate(BaseModel):
 
 
 class KnowledgeBaseArticleRead(KnowledgeBaseArticleCreate):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
     hit_count: int
     source_name: str | None = None
@@ -67,9 +72,7 @@ class KnowledgeBaseArticleRead(KnowledgeBaseArticleCreate):
     created_at: datetime
 
 
-class KBIngestionRunRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class KBIngestionRunRead(UTCBaseModel):
     id: int
     status: KBIngestionStatus
     source_filename: str | None = None
@@ -86,9 +89,7 @@ class KBIngestionRunRead(BaseModel):
     error_message: str | None = None
 
 
-class TicketTimelineEventRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class TicketTimelineEventRead(UTCBaseModel):
     id: int
     ticket_id: int
     event_type: str
@@ -113,9 +114,7 @@ class RemediationTaskUpdate(BaseModel):
     status: RemediationTaskStatus | None = None
 
 
-class RemediationTaskRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class RemediationTaskRead(UTCBaseModel):
     id: int
     ticket_id: int
     title: str
@@ -126,9 +125,7 @@ class RemediationTaskRead(BaseModel):
     created_at: datetime
 
 
-class AdminNoteRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class AdminNoteRead(UTCBaseModel):
     id: int
     ticket_id: int
     author: str
@@ -136,9 +133,7 @@ class AdminNoteRead(BaseModel):
     created_at: datetime
 
 
-class AIReviewRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class AIReviewRead(UTCBaseModel):
     id: int
     ticket_id: int
     original_category: str
@@ -165,9 +160,7 @@ class AIReviewUpdate(BaseModel):
     status: AIReviewStatus
 
 
-class AIAnalysisAuditRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class AIAnalysisAuditRead(UTCBaseModel):
     id: int
     ticket_id: int
     run_id: str
@@ -190,9 +183,7 @@ class AIAnalysisAuditRead(BaseModel):
     created_at: datetime
 
 
-class TicketBaseRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class TicketBaseRead(UTCBaseModel):
     id: int
     requester_id: int
     title: str

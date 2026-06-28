@@ -146,10 +146,13 @@ def test_ticket_create_trace_and_analysis_run_api(tmp_path: Path):
     body = response.json()
     runs = client.get(f"/api/tickets/{body['ticket_id']}/analysis-runs", headers={"X-Demo-User-Id": "1"})
     trace = client.get(f"/api/tickets/{body['ticket_id']}/analysis-runs/{body['run_id']}/trace", headers={"X-Demo-User-Id": "1"})
+    detail = client.get(f"/api/tickets/{body['ticket_id']}", headers={"X-Demo-User-Id": "1"})
 
     assert body["trace_id"]
     assert runs.status_code == 200
     assert trace.status_code == 200
+    assert detail.status_code == 200
+    assert detail.json()["created_at"].endswith("Z")
     assert trace.json()["stage_traces"]
     app.dependency_overrides.clear()
 
@@ -172,6 +175,83 @@ def test_attachment_rejects_disallowed_content(tmp_path: Path):
         f"/api/tickets/{ticket_id}/attachments",
         headers={"X-Demo-User-Id": "1"},
         files={"file": ("evil.exe", b"\x00\x01binary", "application/octet-stream")},
+    )
+
+    assert rejected.status_code == 400
+    app.dependency_overrides.clear()
+
+
+def test_utf8_log_attachment_allows_generic_mime(tmp_path: Path):
+    client, _ = _client(tmp_path)
+    created = client.post(
+        "/api/tickets",
+        headers={"X-Demo-User-Id": "1"},
+        data={
+            "title": "VPN cannot connect",
+            "description": "VPN cannot connect",
+            "category": "网络连接",
+            "urgency": "中",
+            "contact_email": "a@example.com",
+        },
+    )
+    ticket_id = created.json()["ticket_id"]
+
+    uploaded = client.post(
+        f"/api/tickets/{ticket_id}/attachments",
+        headers={"X-Demo-User-Id": "1"},
+        files={"file": ("vpn-client.log", b"2026-06-29T15:31:00Z ERROR vpn timeout\n", "application/octet-stream")},
+    )
+
+    assert uploaded.status_code == 200
+    assert uploaded.json()["file_type"] == "log"
+    app.dependency_overrides.clear()
+
+
+def test_utf8_txt_attachment_is_allowed(tmp_path: Path):
+    client, _ = _client(tmp_path)
+    created = client.post(
+        "/api/tickets",
+        headers={"X-Demo-User-Id": "1"},
+        data={
+            "title": "VPN cannot connect",
+            "description": "VPN cannot connect",
+            "category": "网络连接",
+            "urgency": "中",
+            "contact_email": "a@example.com",
+        },
+    )
+    ticket_id = created.json()["ticket_id"]
+
+    uploaded = client.post(
+        f"/api/tickets/{ticket_id}/attachments",
+        headers={"X-Demo-User-Id": "1"},
+        files={"file": ("vpn-client.txt", "ERROR vpn timeout\n".encode(), "text/plain")},
+    )
+
+    assert uploaded.status_code == 200
+    assert uploaded.json()["file_type"] == "log"
+    app.dependency_overrides.clear()
+
+
+def test_binary_disguised_as_log_is_rejected(tmp_path: Path):
+    client, _ = _client(tmp_path)
+    created = client.post(
+        "/api/tickets",
+        headers={"X-Demo-User-Id": "1"},
+        data={
+            "title": "VPN cannot connect",
+            "description": "VPN cannot connect",
+            "category": "网络连接",
+            "urgency": "中",
+            "contact_email": "a@example.com",
+        },
+    )
+    ticket_id = created.json()["ticket_id"]
+
+    rejected = client.post(
+        f"/api/tickets/{ticket_id}/attachments",
+        headers={"X-Demo-User-Id": "1"},
+        files={"file": ("vpn-client.log", b"\x00\x01\x02not-text", "application/octet-stream")},
     )
 
     assert rejected.status_code == 400

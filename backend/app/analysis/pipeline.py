@@ -1,4 +1,3 @@
-from datetime import datetime
 from uuid import uuid4
 
 from sqlmodel import Session, select
@@ -13,6 +12,7 @@ from app.analysis.contracts import (
 from app.analysis.policy import apply_review_policy
 from app.analysis.trace import TraceRecorder
 from app.core.config import get_settings
+from app.core.time import utc_now
 from app.evidence.logs import build_log_evidence
 from app.evidence.ocr import build_ocr_evidence
 from app.evidence.text import build_text_evidence
@@ -215,7 +215,7 @@ class IncidentAnalysisPipeline:
             trace_id=self.trace.trace_id,
             ticket_id=int(ticket.id),
             analysis_version=self.analysis_version,
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
             evidence_bundle=evidence_bundle,
             retrieval=retrieval,
             triage=decision,

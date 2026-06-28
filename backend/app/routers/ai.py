@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.core.security import Principal, get_current_principal, require_admin
+from app.core.time import utc_isoformat
 from app.database import get_session
 from app.models import AIReview, AIReviewStatus, Ticket, TicketTimelineEvent
 from app.schemas import AIReviewUpdate
@@ -19,10 +20,16 @@ def list_reviews(
     rows = []
     for review in reviews:
         ticket = session.get(Ticket, review.ticket_id)
+        review_payload = review.model_dump()
+        review_payload["created_at"] = utc_isoformat(review.created_at)
+        ticket_payload = ticket.model_dump() if ticket else None
+        if ticket_payload:
+            ticket_payload["created_at"] = utc_isoformat(ticket.created_at)
+            ticket_payload["updated_at"] = utc_isoformat(ticket.updated_at)
         rows.append(
             {
-                **review.model_dump(),
-                "ticket": ticket.model_dump() if ticket else None,
+                **review_payload,
+                "ticket": ticket_payload,
             }
         )
     return rows
@@ -62,4 +69,9 @@ def update_review(
     session.add(TicketTimelineEvent(ticket_id=ticket.id, event_type="ai_review_updated", content=content))
     session.commit()
     session.refresh(review)
-    return {**review.model_dump(), "ticket": ticket.model_dump()}
+    review_payload = review.model_dump()
+    review_payload["created_at"] = utc_isoformat(review.created_at)
+    ticket_payload = ticket.model_dump()
+    ticket_payload["created_at"] = utc_isoformat(ticket.created_at)
+    ticket_payload["updated_at"] = utc_isoformat(ticket.updated_at)
+    return {**review_payload, "ticket": ticket_payload}

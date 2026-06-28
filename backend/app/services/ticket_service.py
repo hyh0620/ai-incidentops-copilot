@@ -1,5 +1,4 @@
 import hashlib
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -9,6 +8,7 @@ from sqlmodel import Session, func, select
 
 from app.analysis.pipeline import IncidentAnalysisPipeline
 from app.core.config import get_settings
+from app.core.time import utc_isoformat, utc_now
 from app.models import (
     AIReview,
     AIAnalysisAudit,
@@ -36,8 +36,35 @@ def _safe_file_name(file_name: str) -> str:
     return cleaned or "upload.bin"
 
 
-def _is_supported_image(content: bytes, content_type: str) -> bool:
-    if content_type not in SETTINGS.allowed_image_mime_set:
+LOG_EXTENSIONS = {".log", ".txt", ".json", ".csv"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+GENERIC_MIME_TYPES = {"", "application/octet-stream", "binary/octet-stream"}
+
+
+def _file_suffix(file_name: str) -> str:
+    return Path(file_name).suffix.lower()
+
+
+def _is_probably_utf8_text(content: bytes) -> bool:
+    if not content:
+        return False
+    sample = content[:8192]
+    if b"\x00" in sample:
+        return False
+    try:
+        decoded = sample.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    control_count = sum(1 for char in decoded if ord(char) < 32 and char not in "\n\r\t")
+    return control_count <= max(2, len(decoded) // 100)
+
+
+def _is_supported_image(content: bytes, content_type: str, file_name: str) -> bool:
+    suffix = _file_suffix(file_name)
+    if suffix not in IMAGE_EXTENSIONS:
+        return False
+    normalized_type = (content_type or "").lower()
+    if normalized_type not in SETTINGS.allowed_image_mime_set and normalized_type not in GENERIC_MIME_TYPES:
         return False
     return (
         content.startswith(b"\x89PNG\r\n\x1a\n")
@@ -49,22 +76,17 @@ def _is_supported_image(content: bytes, content_type: str) -> bool:
 
 
 def _is_supported_log(content: bytes, content_type: str, file_name: str) -> bool:
-    if content_type not in SETTINGS.allowed_log_mime_set:
+    suffix = _file_suffix(file_name)
+    if suffix not in LOG_EXTENSIONS:
         return False
-    if not file_name.lower().endswith((".log", ".txt", ".json", ".csv")):
+    normalized_type = (content_type or "").lower()
+    if normalized_type not in SETTINGS.allowed_log_mime_set and normalized_type not in GENERIC_MIME_TYPES:
         return False
-    sample = content[:4096]
-    if b"\x00" in sample:
-        return False
-    try:
-        sample.decode("utf-8")
-        return True
-    except UnicodeDecodeError:
-        return False
+    return _is_probably_utf8_text(content)
 
 
 def detect_file_type(file_name: str, content_type: str, content: bytes) -> AttachmentFileType:
-    if _is_supported_image(content, content_type):
+    if _is_supported_image(content, content_type, file_name):
         return AttachmentFileType.screenshot
     if _is_supported_log(content, content_type, file_name):
         return AttachmentFileType.log
@@ -140,10 +162,10 @@ def analyze_ticket(session: Session, ticket: Ticket, event_type: str = "ai_triag
             "provider": provider,
             "retrieval_mode": retrieval_mode,
             "source_chunk_ids": source_chunk_ids,
-            "created_at": run.created_at.isoformat(),
+            "created_at": utc_isoformat(run.created_at),
         },
     }
-    ticket.updated_at = datetime.utcnow()
+    ticket.updated_at = utc_now()
     session.add(ticket)
     session.add(
         AIAnalysisAudit(
@@ -368,7 +390,7 @@ def update_ticket(session: Session, ticket_id: int, payload: TicketUpdate) -> di
 
     for field, value in changes.items():
         setattr(ticket, field, value)
-    ticket.updated_at = datetime.utcnow()
+    ticket.updated_at = utc_now()
     session.add(ticket)
 
     if internal_note:

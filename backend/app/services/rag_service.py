@@ -3,7 +3,6 @@ import json
 import re
 import shutil
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +25,7 @@ except Exception:  # pragma: no cover - sentence-transformers can be absent in t
     SentenceTransformer = None
 
 from app.core.config import get_settings
+from app.core.time import utc_isoformat, utc_now
 from app.models import KBIngestionRun, KnowledgeBaseArticle, KnowledgeBaseChunk
 from app.retrieval.chunker import boundary_aware_chunks
 from app.retrieval.reranker import HeuristicReranker
@@ -196,7 +196,7 @@ def build_kb_chunks(session: Session) -> list[KnowledgeBaseChunk]:
                     page_number=page_number,
                     kb_version=article.kb_version,
                     ingestion_run_id=article.ingestion_run_id,
-                    created_at=datetime.utcnow(),
+                    created_at=utc_now(),
                 )
             else:
                 chunk.article_id = article.id
@@ -209,7 +209,7 @@ def build_kb_chunks(session: Session) -> list[KnowledgeBaseChunk]:
             session.add(chunk)
             chunks.append(chunk)
         article.index_status = "ready"
-        article.updated_at = datetime.utcnow()
+        article.updated_at = utc_now()
         session.add(article)
     session.commit()
     if desired_hashes:
@@ -289,7 +289,7 @@ def rebuild_kb_index(session: Session, index_dir: Path | None = None, force_fall
         },
         "source_versions": source_versions,
         "build_status": "ready",
-        "rebuilt_at": datetime.utcnow().isoformat(),
+        "rebuilt_at": utc_isoformat(utc_now()),
     }
     (tmp_dir / MANIFEST_FILE).write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     _replace_index_dir_contents(tmp_dir, index_dir)

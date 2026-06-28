@@ -3,9 +3,10 @@ import Link from "next/link";
 
 import { AppShell } from "@/components/AppShell";
 import { SeverityBadge, StatusBadge } from "@/components/Badge";
+import { LocalDate, LocalTodayCount } from "@/components/LocalDate";
 import { BarList } from "@/components/SimpleChart";
 import { StatCard } from "@/components/StatCard";
-import { formatDate, percent, severityText } from "@/lib/format";
+import { percent, severityText } from "@/lib/format";
 import { serverFetch } from "@/lib/server-api";
 import type { AIReview, AnalyticsSummary, Ticket } from "@/types";
 
@@ -29,7 +30,7 @@ export default async function AdminDashboardPage() {
         <StatCard label="待处理工单数" value={summary.pending_tickets} icon={Clock3} hint="待分诊 / 已分诊 / 处理中" />
         <StatCard label="高危事件数" value={summary.high_risk_tickets} icon={ShieldAlert} hint="高 / 严重" />
         <StatCard label="平均解决时间" value={`${summary.avg_resolution_hours}h`} icon={TimerReset} hint="已解决工单均值" />
-        <StatCard label="今日新增工单" value={summary.today_new_tickets} icon={AlertTriangle} hint="按本地数据库时间" />
+        <StatCard label="今日新增工单" value={<LocalTodayCount values={tickets.map((ticket) => ticket.created_at)} />} icon={AlertTriangle} hint="按浏览器本地时区" />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -58,7 +59,7 @@ export default async function AdminDashboardPage() {
               <Link key={ticket.id} href={`/admin/tickets/${ticket.id}`} className="grid gap-3 px-5 py-4 hover:bg-slate-50 md:grid-cols-[1fr_90px_92px_90px] md:items-center">
                 <div>
                   <p className="font-medium text-ink">{ticket.title}</p>
-                  <p className="mt-1 text-sm text-muted">{ticket.predicted_category} · {formatDate(ticket.created_at)}</p>
+                  <p className="mt-1 text-sm text-muted">{ticket.predicted_category} · <LocalDate value={ticket.created_at} /></p>
                 </div>
                 <SeverityBadge value={ticket.severity} />
                 <StatusBadge value={ticket.status} />

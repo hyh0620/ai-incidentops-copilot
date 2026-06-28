@@ -1,11 +1,13 @@
 import argparse
 import hashlib
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 from sqlalchemy import delete
 from sqlmodel import Session, func, select
 
+from app.core.config import get_settings
+from app.core.time import utc_now
 from app.database import create_db_and_tables, engine
 from app.models import (
     AIReview,
@@ -26,7 +28,6 @@ from app.models import (
     UserRole,
 )
 from app.services.ticket_service import analyze_ticket
-from app.core.config import get_settings
 from app.services.rag_service import DEFAULT_INDEX_DIR, rebuild_kb_index
 
 
@@ -219,7 +220,7 @@ def seed_tickets(session: Session, users: list[User]) -> list[Ticket]:
 
     for index, (title, description, category, urgency, system) in enumerate(TICKET_EXAMPLES, start=1):
         user = requester_users[(index - 1) % len(requester_users)]
-        created_at = datetime.utcnow() - timedelta(days=(30 - index) % 7, hours=index % 10)
+        created_at = utc_now() - timedelta(days=(30 - index) % 7, hours=index % 10)
         has_log = index in {2, 6, 7, 11, 13, 15, 20, 21, 25, 28}
         has_screenshot = index in {1, 3, 5, 8, 12, 19, 22, 27, 29}
         log_name = f"demo-ticket-{index}.log" if has_log else None
@@ -311,7 +312,7 @@ def seed_tasks_notes_reviews(session: Session, tickets: list[Ticket]) -> None:
             description=f"根据 AI 建议执行首轮排查：{ticket.next_steps[0] if ticket.next_steps else '补充信息'}",
             assigned_to=owners[index % len(owners)],
             status=[RemediationTaskStatus.todo, RemediationTaskStatus.in_progress, RemediationTaskStatus.done][index % 3],
-            due_date=datetime.utcnow() + timedelta(days=index % 5 + 1),
+            due_date=utc_now() + timedelta(days=index % 5 + 1),
             created_at=ticket.created_at + timedelta(minutes=12),
         )
         session.add(task)

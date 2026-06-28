@@ -1,21 +1,22 @@
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlmodel import Session, select
 
 from app.models import AIReview, KnowledgeBaseArticle, RemediationTask, Ticket, TicketSeverity, TicketStatus
+from app.core.time import elapsed_hours, ensure_utc, utc_now
 
 
 def summary(session: Session) -> dict:
     tickets = session.exec(select(Ticket)).all()
-    now = datetime.utcnow()
+    now = utc_now()
     pending = [item for item in tickets if item.status in {TicketStatus.open, TicketStatus.triaged, TicketStatus.in_progress}]
     high_risk = [item for item in tickets if item.severity in {TicketSeverity.high, TicketSeverity.critical}]
     resolved = [item for item in tickets if item.status in {TicketStatus.resolved, TicketStatus.closed}]
     avg_resolution_hours = 0.0
     if resolved:
-        avg_resolution_hours = sum((item.updated_at - item.created_at).total_seconds() / 3600 for item in resolved) / len(resolved)
-    today_new = [item for item in tickets if item.created_at.date() == now.date()]
+        avg_resolution_hours = sum(elapsed_hours(item.created_at, item.updated_at) for item in resolved) / len(resolved)
+    today_new = [item for item in tickets if ensure_utc(item.created_at).date() == now.date()]
     reviews = session.exec(select(AIReview)).all()
     return {
         "total_tickets": len(tickets),
@@ -41,10 +42,10 @@ def severity_distribution(session: Session) -> list[dict]:
 
 def seven_day_trend(session: Session) -> list[dict]:
     tickets = session.exec(select(Ticket)).all()
-    today = datetime.utcnow().date()
+    today = utc_now().date()
     buckets = {today - timedelta(days=offset): 0 for offset in range(6, -1, -1)}
     for ticket in tickets:
-        day = ticket.created_at.date()
+        day = ensure_utc(ticket.created_at).date()
         if day in buckets:
             buckets[day] += 1
     return [{"date": day.strftime("%m-%d"), "count": count} for day, count in buckets.items()]
@@ -84,6 +85,6 @@ def average_resolution(session: Session) -> dict:
     resolved = [item for item in tickets if item.status in {TicketStatus.resolved, TicketStatus.closed}]
     if not resolved:
         return {"avg_hours": 0, "resolved_count": 0}
-    avg_hours = sum((item.updated_at - item.created_at).total_seconds() / 3600 for item in resolved) / len(resolved)
+    avg_hours = sum(elapsed_hours(item.created_at, item.updated_at) for item in resolved) / len(resolved)
     tasks = session.exec(select(RemediationTask)).all()
     return {"avg_hours": round(avg_hours, 1), "resolved_count": len(resolved), "done_tasks": len([item for item in tasks if item.status == "done"])}

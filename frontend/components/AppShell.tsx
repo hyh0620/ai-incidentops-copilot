@@ -87,9 +87,9 @@ export function AppShell({
         <div className="absolute bottom-4 left-3 right-3 rounded-lg border border-cyan-100 bg-cyan-50 p-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-cyan-900">
             <UsersRound className="h-4 w-4" />
-            面试演示模式
+            本地演示环境
           </div>
-          <p className="mt-1 text-xs leading-5 text-cyan-800">默认使用本地演示身份；数据为合成演示数据，分析来源与降级原因会在详情页标记。</p>
+          <p className="mt-1 text-xs leading-5 text-cyan-800">当前使用本地演示身份与合成数据；分析来源、降级状态和人工复核原因会在工单详情中标记。</p>
         </div>
       </aside>
       <main className="lg:pl-64">

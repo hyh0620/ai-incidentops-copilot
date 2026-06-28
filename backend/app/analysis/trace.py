@@ -1,11 +1,11 @@
 from collections.abc import Callable
 from contextlib import contextmanager
-from datetime import datetime
 from time import perf_counter
 from typing import Iterator
 from uuid import uuid4
 
 from app.analysis.contracts import AnalysisStageTrace
+from app.core.time import utc_now
 
 
 class StageSpan:
@@ -41,7 +41,7 @@ class TraceRecorder:
         input_summary: str | None = None,
         output: Callable[[], str | None] | None = None,
     ) -> Iterator[StageSpan]:
-        started_at = datetime.utcnow()
+        started_at = utc_now()
         started = perf_counter()
         span = StageSpan()
         try:
@@ -51,7 +51,7 @@ class TraceRecorder:
             span.error = str(exc)
             raise
         finally:
-            ended_at = datetime.utcnow()
+            ended_at = utc_now()
             output_summary = output() if output else span.output_summary
             self.stages.append(
                 AnalysisStageTrace(

@@ -16,7 +16,8 @@ export function DemoPersonaSwitcher() {
   function changePersona(nextId: string) {
     document.cookie = `${DEMO_PERSONA_COOKIE}=${encodeURIComponent(nextId)}; path=/; max-age=2592000; SameSite=Lax`;
     setPersonaId(nextId);
-    window.location.reload();
+    const nextPersona = personaById(nextId);
+    window.location.href = nextPersona.role === "admin" ? "/admin/dashboard" : "/requester/dashboard";
   }
 
   return (

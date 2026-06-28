@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { AppShell } from "@/components/AppShell";
-import { publicApiBase } from "@/lib/api";
+import { clientFetch } from "@/lib/api";
 
 const categories = ["账号权限", "网络连接", "软件系统", "硬件设备", "安全风险", "数据库", "其他"];
 const urgencies = ["低", "中", "高"];
@@ -21,14 +21,10 @@ export default function NewTicketPage() {
     setError("");
     const formData = new FormData(event.currentTarget);
     try {
-      const response = await fetch(`${publicApiBase}/api/tickets`, {
+      const result = await clientFetch<{ ticket_id: number }>("/api/tickets", {
         method: "POST",
         body: formData
       });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      const result = (await response.json()) as { ticket_id: number };
       router.push(`/requester/tickets/${result.ticket_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "提交失败");
@@ -101,7 +97,7 @@ export default function NewTicketPage() {
             </div>
             <label className="mt-4 block rounded-lg border border-dashed border-cyan-200 bg-cyan-50 p-4">
               <span className="text-sm font-medium text-cyan-900">截图上传</span>
-              <input name="screenshot" type="file" accept="image/*" className="mt-3 block w-full text-sm text-cyan-900 file:mr-3 file:rounded-md file:border-0 file:bg-cyan-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white" />
+              <input name="screenshot" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="mt-3 block w-full text-sm text-cyan-900 file:mr-3 file:rounded-md file:border-0 file:bg-cyan-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white" />
             </label>
             <label className="mt-4 block rounded-lg border border-dashed border-violet-200 bg-violet-50 p-4">
               <span className="text-sm font-medium text-violet-900">日志文件上传</span>
